@@ -16,11 +16,16 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SmartRestaurant.Application\SmartRestaurant.Application.csproj" />
     <ProjectReference Include="..\SmartRestaurant.Domain\SmartRestaurant.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Data\Entities\" />
   </ItemGroup>
 
 </Project>
