@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using SmartRestaurant.Infrastructure.Data;
+using SmartRestaurant.Realtime;
 
 namespace SmartRestaurant
 {
@@ -14,9 +15,25 @@ namespace SmartRestaurant
 
             builder.Services.AddControllers();
 
-
+            // Database
             builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            // Realtime (SignalR)
+            builder.Services.AddSignalR();
+
+            // CORS for frontend & websocket clients (adjust origins as needed)
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials()
+                        .SetIsOriginAllowed(_ => true);
+                });
+            });
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -32,10 +49,17 @@ namespace SmartRestaurant
 
             app.UseHttpsRedirection();
 
+            app.UseRouting();
+
+            app.UseCors();
+
             app.UseAuthorization();
 
-
-            app.MapControllers();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+                endpoints.MapHub<OrderHub>("/hubs/orders");
+            });
 
             app.Run();
         }
