@@ -85,7 +85,7 @@ public class KitchenController : ControllerBase
         // Bắn event realtime cho bếp
         await _hubContext.Clients.All.SendAsync("new_order", response);
 
-        return CreatedAtAction(nameof(GetPendingAsync), new { id = detail.Id }, response);
+         return Created($"api/Kitchen/order-details/{detail.Id}", response);
     }
 
     /// <summary>
