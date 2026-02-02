@@ -5,6 +5,7 @@ using SmartRestaurant.Application.Interfaces;
 using SmartRestaurant.Application.Services;
 using SmartRestaurant.Infrastructure.Data;
 using SmartRestaurant.Infrastructure.Repository;
+using SmartRestaurant.Realtime;
 using System.Text;
 
 namespace SmartRestaurant
@@ -23,11 +24,27 @@ namespace SmartRestaurant
                         System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                 });
 
-            // DB Context
+            // Database
             builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
                 options.UseSqlServer(
                     builder.Configuration.GetConnectionString("DefaultConnection")
                 ));
+
+            // SignalR (Realtime)
+            builder.Services.AddSignalR();
+
+            // CORS (Frontend + WebSocket)
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials()
+                        .SetIsOriginAllowed(_ => true);
+                });
+            });
 
             // Load JWT Key safely
             var jwtKey = builder.Configuration["Jwt:Key"]
@@ -53,6 +70,7 @@ namespace SmartRestaurant
                     };
                 });
 
+            // Swagger
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
@@ -101,11 +119,20 @@ namespace SmartRestaurant
 
             app.UseHttpsRedirection();
 
-            // JWT Middleware
+            app.UseRouting();
+
+            app.UseCors();
+
+            // JWT Middleware (QUAN TRỌNG: Authentication trước Authorization)
             app.UseAuthentication();
             app.UseAuthorization();
 
-            app.MapControllers();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+                endpoints.MapHub<OrderHub>("/hubs/orders");
+            });
+
             app.Run();
         }
     }
