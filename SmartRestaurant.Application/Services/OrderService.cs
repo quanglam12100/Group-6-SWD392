@@ -1,11 +1,6 @@
 ﻿using SmartRestaurant.Application.DTOs;
 using SmartRestaurant.Application.Interfaces;
 using SmartRestaurant.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SmartRestaurant.Application.Services
 {
@@ -18,53 +13,152 @@ namespace SmartRestaurant.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<int> CreateOrderAsync(CreateOrderDto request)
+       
+        public async Task<CreateOrderResponseDto> CreateOrderAsync(CreateOrderDto request)
         {
-            // 1. Chuẩn bị dữ liệu Order (Cha)
+            if (request.Items == null || !request.Items.Any())
+                throw new ArgumentException("Đơn hàng phải có ít nhất 1 món");
+
             var order = new Order
             {
                 TableId = request.TableId,
                 StaffId = request.StaffId,
                 CustomerId = request.CustomerId,
-                OrderCode = $"ORD-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 4).ToUpper()}", // Mã đơn ngẫu nhiên
+                OrderType = "dine_in",
+                OrderCode = GenerateOrderCode(),
                 CreatedAt = DateTime.Now,
                 PaymentStatus = "unpaid",
-                TotalAmount = 0, // Sẽ cộng dồn ở dưới
+                TotalAmount = 0,
                 OrderDetails = new List<OrderDetail>()
             };
 
-            // 2. Lấy danh sách ID các món và topping từ request để query DB 1 lần cho nhanh
-            // (Lấy hết ProductVariant cần dùng)
-            var allVariantIds = request.Items.Select(x => x.ProductVariantId).Distinct().ToList();
+            return await BuildOrderAndSave(order, request.Items);
+        }
+
+        
+        public async Task<CreateOrderResponseDto> CreateOnlineOrderAsync(CreateOnlineOrderDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.CustomerName))
+                throw new ArgumentException("Vui lòng nhập tên khách hàng");
+
+            if (string.IsNullOrWhiteSpace(request.CustomerPhone))
+                throw new ArgumentException("Vui lòng nhập số điện thoại");
+
+            if (string.IsNullOrWhiteSpace(request.DeliveryAddress))
+                throw new ArgumentException("Vui lòng nhập địa chỉ giao hàng");
+
+            if (request.Items == null || !request.Items.Any())
+                throw new ArgumentException("Đơn hàng phải có ít nhất 1 món");
+
+            var order = new Order
+            {
+                TableId = null,
+                StaffId = null,
+                CustomerId = null,
+                OrderType = "online",
+                CustomerName = request.CustomerName,
+                CustomerPhone = request.CustomerPhone,
+                DeliveryAddress = request.DeliveryAddress,
+                DeliveryStatus = "waiting",
+                PaymentMethod = request.PaymentMethod,
+                OrderCode = GenerateOrderCode(),
+                CreatedAt = DateTime.Now,
+                PaymentStatus = "unpaid",
+                TotalAmount = 0,
+                OrderDetails = new List<OrderDetail>()
+            };
+
+            return await BuildOrderAndSave(order, request.Items);
+        }
+
+      
+        public async Task<OrderDetailResponseDto> GetOrderByIdAsync(int id)
+        {
+            var order = await _unitOfWork.Orders.GetByIdAsync(id);
+
+            if (order == null)
+                throw new KeyNotFoundException($"Không tìm thấy đơn hàng #{id}");
+
+            var billItems = order.OrderDetails.Select(detail => new BillItemDto
+            {
+                OrderDetailId = detail.Id,
+                ProductName = detail.ProductVariant?.Product?.Name ?? "",
+                VariantName = detail.ProductVariant?.SizeName ?? "",
+                Quantity = detail.Quantity ?? 0,
+                UnitPrice = detail.ProductVariant?.Price ?? 0,
+                VoiceNote = detail.VoiceNote,
+                Toppings = detail.OrderDetailToppings.Select(t => new BillToppingDto
+                {
+                    ToppingId = t.ToppingId ?? 0,
+                    ToppingName = t.Topping?.Name ?? "",
+                    Price = t.PriceAtPurchase ?? 0
+                }).ToList()
+            }).ToList();
+
+            return new OrderDetailResponseDto
+            {
+                OrderId = order.Id,
+                OrderCode = order.OrderCode ?? "",
+                OrderType = order.OrderType ?? "dine_in",
+                TableName = order.Table?.Name,
+                StaffName = order.Staff?.Fullname,
+                CreatedAt = order.CreatedAt ?? DateTime.Now,
+                ClosedAt = order.ClosedAt,
+                CustomerName = order.CustomerName,
+                CustomerPhone = order.CustomerPhone,
+                DeliveryAddress = order.DeliveryAddress,
+                DeliveryStatus = order.DeliveryStatus,
+                Items = billItems,
+                PaymentMethod = order.PaymentMethod,
+                PaymentStatus = order.PaymentStatus
+            };
+        }
+
+       
+        private async Task<CreateOrderResponseDto> BuildOrderAndSave(Order order, List<CartItemDto> items)
+        {
+            // Query DB 1 lần
+            var allVariantIds = items.Select(x => x.ProductVariantId).Distinct().ToList();
             var variants = await _unitOfWork.ProductVariants.GetByIdsAsync(allVariantIds);
 
-            // (Lấy hết Topping cần dùng)
-            var allToppingIds = request.Items.SelectMany(x => x.ToppingIds).Distinct().ToList();
-            var toppings = await _unitOfWork.Toppings.GetByIdsAsync(allToppingIds);
+            var allToppingIds = items.SelectMany(x => x.ToppingIds).Distinct().ToList();
+            var toppings = allToppingIds.Any()
+                ? await _unitOfWork.Toppings.GetByIdsAsync(allToppingIds)
+                : new List<Topping>();
 
-            // 3. Duyệt qua từng món khách chọn để tính tiền và tạo Detail
-            foreach (var itemDto in request.Items)
+            var billItems = new List<BillItemDto>();
+
+            foreach (var itemDto in items)
             {
-                // Tìm thông tin món trong list đã lấy từ DB
                 var variantEntity = variants.FirstOrDefault(v => v.Id == itemDto.ProductVariantId);
-                if (variantEntity == null) continue; // Nếu ko tìm thấy món thì bỏ qua (hoặc throw lỗi tùy bạn)
+                if (variantEntity == null)
+                    throw new Exception($"Sản phẩm ID {itemDto.ProductVariantId} không tồn tại");
 
-                // Tạo OrderDetail
                 var orderDetail = new OrderDetail
                 {
                     ProductVariantId = itemDto.ProductVariantId,
                     Quantity = itemDto.Quantity,
-                    VoiceNote = itemDto.VoiceNote, // Lưu ghi chú (ít đá, nhiều đường...)
+                    VoiceNote = itemDto.VoiceNote,
                     OriginalVoiceText = itemDto.OriginalVoiceText,
                     Status = "pending",
                     OrderedAt = DateTime.Now,
                     OrderDetailToppings = new List<OrderDetailTopping>()
                 };
 
-                // Tính tiền cơ bản: Giá món * Số lượng
-                decimal currentItemTotal = (variantEntity.Price ?? 0) * itemDto.Quantity;
+                decimal unitPrice = variantEntity.Price ?? 0;
+                decimal currentItemTotal = unitPrice * itemDto.Quantity;
 
-                // 4. Xử lý Topping (nếu có)
+                var billItem = new BillItemDto
+                {
+                    ProductName = variantEntity.Product?.Name ?? "",
+                    VariantName = variantEntity.SizeName ?? "",
+                    Quantity = itemDto.Quantity,
+                    UnitPrice = unitPrice,
+                    VoiceNote = itemDto.VoiceNote,
+                    Toppings = new List<BillToppingDto>()
+                };
+
+                // Xử lý topping
                 if (itemDto.ToppingIds != null && itemDto.ToppingIds.Any())
                 {
                     foreach (var toppingId in itemDto.ToppingIds)
@@ -72,32 +166,137 @@ namespace SmartRestaurant.Application.Services
                         var toppingEntity = toppings.FirstOrDefault(t => t.Id == toppingId);
                         if (toppingEntity != null)
                         {
-                            // Tạo liên kết Món - Topping
                             orderDetail.OrderDetailToppings.Add(new OrderDetailTopping
                             {
                                 ToppingId = toppingId,
-                                PriceAtPurchase = toppingEntity.Price // Lưu giá topping tại thời điểm mua
+                                PriceAtPurchase = toppingEntity.Price
                             });
 
-                            // Cộng tiền topping: Giá topping * Số lượng món cha
-                            // (Ví dụ: 2 ly trà sữa thì topping cũng phải tính tiền x2)
                             currentItemTotal += (toppingEntity.Price ?? 0) * itemDto.Quantity;
+
+                            billItem.Toppings.Add(new BillToppingDto
+                            {
+                                ToppingId = toppingId,
+                                ToppingName = toppingEntity.Name ?? "",
+                                Price = toppingEntity.Price ?? 0
+                            });
                         }
                     }
                 }
 
-                
                 order.TotalAmount += currentItemTotal;
-
-                
                 order.OrderDetails.Add(orderDetail);
+                billItems.Add(billItem);
             }
 
-            // 5. Lưu xuống DB
+            // Lưu DB
             await _unitOfWork.Orders.AddAsync(order);
             await _unitOfWork.CommitAsync();
 
-            return order.Id;
+            // Gán OrderDetailId sau khi lưu
+            for (int i = 0; i < billItems.Count; i++)
+                billItems[i].OrderDetailId = order.OrderDetails.ElementAt(i).Id;
+
+            return new CreateOrderResponseDto
+            {
+                OrderId = order.Id,
+                OrderCode = order.OrderCode!,
+                OrderType = order.OrderType,
+                TableName = order.Table?.Name,
+                StaffName = order.Staff?.Fullname,
+                CreatedAt = order.CreatedAt ?? DateTime.Now,
+                CustomerName = order.CustomerName,
+                CustomerPhone = order.CustomerPhone,
+                DeliveryAddress = order.DeliveryAddress,
+                DeliveryStatus = order.DeliveryStatus,
+                Items = billItems,
+                PaymentStatus = order.PaymentStatus
+            };
+        }
+
+        private static string GenerateOrderCode() =>
+            $"ORD-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString()[..4].ToUpper()}";
+
+        public async  Task CancelOrderAsync(int id)
+        {
+            var order = await _unitOfWork.Orders.GetByIdAsync(id);
+
+            if (order == null)
+                throw new KeyNotFoundException($"Không tìm thấy đơn hàng #{id}");
+
+          
+            if (order.PaymentStatus == "paid")
+                throw new InvalidOperationException("Không thể hủy đơn đã thanh toán");
+
+            
+            if (order.OrderType == "online" && order.DeliveryStatus != "waiting")
+                throw new InvalidOperationException($"Không thể hủy đơn đang ở trạng thái '{order.DeliveryStatus}'");
+
+           
+            foreach (var detail in order.OrderDetails)
+                detail.Status = "cancelled";
+
+            order.PaymentStatus = "refunded";
+            order.ClosedAt = DateTime.Now;
+
+            await _unitOfWork.Orders.UpdateAsync(order);
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async  Task UpdateDeliveryStatusAsync(int id, string deliveryStatus)
+        {
+            var order = await _unitOfWork.Orders.GetByIdAsync(id);
+
+            if (order == null)
+                throw new KeyNotFoundException($"Không tìm thấy đơn hàng #{id}");
+
+            if (order.OrderType != "online")
+                throw new InvalidOperationException("Chỉ đơn online mới có trạng thái giao hàng");
+
+            // Kiểm tra thứ tự trạng thái hợp lệ
+            var validTransitions = new Dictionary<string, string>
+            {
+                { "waiting",    "confirmed"  },
+                { "confirmed",  "delivering" },
+                { "delivering", "delivered"  }
+            };
+
+            if (!validTransitions.TryGetValue(order.DeliveryStatus ?? "", out var expectedNext))
+                throw new InvalidOperationException($"Đơn hàng đã ở trạng thái cuối: '{order.DeliveryStatus}'");
+
+            if (deliveryStatus != expectedNext)
+                throw new InvalidOperationException(
+                    $"Trạng thái không hợp lệ. Hiện tại: '{order.DeliveryStatus}' → Tiếp theo phải là: '{expectedNext}'");
+
+            order.DeliveryStatus = deliveryStatus;
+
+           
+            if (deliveryStatus == "delivered")
+                order.ClosedAt = DateTime.Now;
+
+            await _unitOfWork.Orders.UpdateAsync(order);
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async  Task<List<OrderSummaryDto>> GetAllOrdersAsync()
+        {
+            var orders = await _unitOfWork.Orders.GetAllAsync();
+
+            return orders.Select(o => new OrderSummaryDto
+            {
+                OrderId = o.Id,
+                OrderCode = o.OrderCode ?? "",
+                OrderType = o.OrderType ?? "dine_in",
+                TableName = o.Table?.Name,
+                StaffName = o.Staff?.Fullname,
+                CustomerName = o.CustomerName,
+                CustomerPhone = o.CustomerPhone,
+                DeliveryStatus = o.DeliveryStatus,
+                TotalAmount = o.TotalAmount ?? 0,
+                PaymentStatus = o.PaymentStatus,
+                CreatedAt = o.CreatedAt,
+                TotalItems = o.OrderDetails.Count
+            }).ToList();
         }
     }
 }

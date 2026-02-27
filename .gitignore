@@ -81,3 +81,4 @@ appsettings.*.json
 *.swo
 *~
 .DS_Store
+/_scaffold_backup_20260227_171129

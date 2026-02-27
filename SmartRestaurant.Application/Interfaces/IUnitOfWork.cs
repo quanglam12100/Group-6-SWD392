@@ -15,5 +15,7 @@ namespace SmartRestaurant.Application.Interfaces
         
         Task<int> CommitAsync();
 
+        ITableRepository Tables { get; }
+
     }
 }

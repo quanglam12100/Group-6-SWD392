@@ -9,6 +9,14 @@ namespace SmartRestaurant.Application.Interfaces
 {
     public interface IOrderService
     {
-        Task<int> CreateOrderAsync(CreateOrderDto request);
+        Task<CreateOrderResponseDto> CreateOrderAsync(CreateOrderDto request);
+        Task<CreateOrderResponseDto> CreateOnlineOrderAsync(CreateOnlineOrderDto request);
+        Task<OrderDetailResponseDto> GetOrderByIdAsync(int id);
+
+        Task CancelOrderAsync(int id);
+        Task UpdateDeliveryStatusAsync(int id, string deliveryStatus);
+
+        Task<List<OrderSummaryDto>> GetAllOrdersAsync();
+
     }
 }

@@ -108,6 +108,8 @@ namespace SmartRestaurant
             builder.Services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
             builder.Services.AddScoped<IAudioService, SmartRestaurant.Infrastructure.Services.OpenAiService>();
             builder.Services.AddScoped<IProductMatchingService, ProductMatchingService>();
+            //builder.Services.AddScoped<ITableRepository, TableRepository>();
+            builder.Services.AddScoped<ITableService, TableService>();
 
             var app = builder.Build();
 

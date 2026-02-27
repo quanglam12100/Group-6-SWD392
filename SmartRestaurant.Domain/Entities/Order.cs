@@ -25,6 +25,16 @@ public partial class Order
 
     public DateTime? ClosedAt { get; set; }
 
+    public string OrderType { get; set; } = null!;
+
+    public string? CustomerName { get; set; }   
+
+    public string? CustomerPhone { get; set; }
+
+    public string? DeliveryAddress { get; set; }
+
+    public string? DeliveryStatus { get; set; }
+
     public virtual Account? Customer { get; set; }
 
     public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();

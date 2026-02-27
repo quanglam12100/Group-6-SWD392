@@ -1,20 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using SmartRestaurant.Domain.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
-
-
-
+using Microsoft.EntityFrameworkCore;
+using SmartRestaurant.Domain.Entities;
 
 namespace SmartRestaurant.Infrastructure.Data;
 
 public partial class SmartRestaurantDbContext : DbContext
 {
-    public SmartRestaurantDbContext()
-    {
-    }
-
     public SmartRestaurantDbContext(DbContextOptions<SmartRestaurantDbContext> options)
         : base(options)
     {
@@ -42,7 +34,6 @@ public partial class SmartRestaurantDbContext : DbContext
 
     public virtual DbSet<VoiceLog> VoiceLogs { get; set; }
 
-    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Account>(entity =>
@@ -102,9 +93,25 @@ public partial class SmartRestaurantDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");
             entity.Property(e => e.CustomerId).HasColumnName("customer_id");
+            entity.Property(e => e.CustomerName)
+                .HasMaxLength(100)
+                .HasColumnName("customer_name");
+            entity.Property(e => e.CustomerPhone)
+                .HasMaxLength(20)
+                .HasColumnName("customer_phone");
+            entity.Property(e => e.DeliveryAddress)
+                .HasMaxLength(500)
+                .HasColumnName("delivery_address");
+            entity.Property(e => e.DeliveryStatus)
+                .HasMaxLength(20)
+                .HasColumnName("delivery_status");
             entity.Property(e => e.OrderCode)
                 .HasMaxLength(255)
                 .HasColumnName("order_code");
+            entity.Property(e => e.OrderType)
+                .HasMaxLength(20)
+                .HasDefaultValue("dine_in")
+                .HasColumnName("order_type");
             entity.Property(e => e.PaymentMethod)
                 .HasMaxLength(255)
                 .HasColumnName("payment_method");

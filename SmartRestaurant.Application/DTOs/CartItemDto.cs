@@ -9,7 +9,7 @@
         public string? VoiceNote { get; set; } 
         public string? OriginalVoiceText { get; set; } 
 
-        
+            
         public List<int> ToppingIds { get; set; } = new();
     }
 }

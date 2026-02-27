@@ -15,6 +15,10 @@ namespace SmartRestaurant.Infrastructure.Repository
         public IOrderRepository Orders { get; private set; }
         public IProductVariantRepository ProductVariants { get; private set; }
         public IToppingRepository Toppings { get; private set; }
+        public ITableRepository Tables { get; private set; }
+
+
+
         public UnitOfWork(SmartRestaurantDbContext context)
         {
             _context = context;
@@ -22,6 +26,7 @@ namespace SmartRestaurant.Infrastructure.Repository
             Orders = new OrderRepository(_context);
             ProductVariants = new ProductVariantRepository(_context);
             Toppings = new ToppingRepository(_context);
+            Tables = new TableRepository(_context);
         }
 
         public async Task<int> CommitAsync()
