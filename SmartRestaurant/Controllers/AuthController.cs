@@ -26,11 +26,16 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var user = await _context.Accounts
-            .FirstOrDefaultAsync(x => x.Username == request.Username
-                                   && x.Password == request.Password);
+            .FirstOrDefaultAsync(x =>
+                x.Username == request.Username &&
+                x.Password == request.Password
+            );
 
         if (user == null)
             return Unauthorized("Invalid username or password");
+
+        if (user.IsActive != true)
+            return Unauthorized("Account disabled");
 
         var token = GenerateJwtToken(user);
 
@@ -53,18 +58,18 @@ public class AuthController : ControllerBase
         if (exists)
             return BadRequest("Username already exists");
 
-        // Validate role
-        var allowedRoles = new[] { "Admin", "Staff", "Kitchen" };
-        if (!allowedRoles.Contains(request.Role))
-            return BadRequest("Invalid role. Must be Admin, Staff, or Kitchen");
+        var allowedRoles = new[] { "admin", "staff", "kitchen" };
+        var role = request.Role?.ToLower();
+
+        if (string.IsNullOrEmpty(role) || !allowedRoles.Contains(role))
+            return BadRequest("Invalid role");
 
         var account = new Account
         {
             Username = request.Username,
-            Password = request.Password, // sau này hash
+            Password = request.Password, // 👈 Plain text (dễ nhìn)
             Fullname = request.Fullname,
-            Role = request.Role ?? "Staff",
-
+            Role = role,
             CreatedAt = DateTime.UtcNow,
             IsActive = true
         };
@@ -81,19 +86,17 @@ public class AuthController : ControllerBase
         });
     }
 
-
     // ================= JWT TOKEN =================
     private string GenerateJwtToken(Account user)
     {
         var claims = new[]
         {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Username ?? ""),
-            new Claim(ClaimTypes.Role, user.Role ?? "User")
+            new Claim(ClaimTypes.Role, user.Role ?? "staff")
         };
 
-        var jwtKey = _config["Jwt:Key"]
-            ?? "SMARTRESTAURANT_SECRET_KEY_12345";
-
+        var jwtKey = _config["Jwt:Key"] ?? "SMARTRESTAURANT_SECRET_KEY_12345";
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -101,7 +104,7 @@ public class AuthController : ControllerBase
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(3),
+            expires: DateTime.UtcNow.AddHours(6),
             signingCredentials: creds
         );
 

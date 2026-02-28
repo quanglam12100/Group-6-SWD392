@@ -12,7 +12,7 @@ namespace SmartRestaurant
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Controllers + Fix JSON Cycle
+            // ================= Controllers =================
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
                 {
@@ -20,15 +20,29 @@ namespace SmartRestaurant
                         System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                 });
 
-            // DB Context
+            // ================= DB Context =================
             builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("DefaultConnection")
+                )
+            );
 
-            // Load JWT Key safely (fix CS8604)
+            // ================= CORS (CHO FE HTML / JS) =================
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy
+                        .AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
+                });
+            });
+
+            // ================= JWT =================
             var jwtKey = builder.Configuration["Jwt:Key"]
                 ?? throw new Exception("JWT Key is missing in appsettings.json");
 
-            // JWT Authentication
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -48,6 +62,7 @@ namespace SmartRestaurant
                     };
                 });
 
+            // ================= Swagger =================
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
@@ -60,28 +75,28 @@ namespace SmartRestaurant
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Description = "Enter JWT token like: Bearer {your token}"
+                    Description = "Enter: Bearer {your_token}"
                 });
 
                 c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-    {
-        {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
-        }
-    });
+                    {
+                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                        {
+                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                            {
+                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        new string[] {}
+                    }
+                });
             });
-
 
             var app = builder.Build();
 
+            // ================= Middleware =================
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -89,8 +104,10 @@ namespace SmartRestaurant
             }
 
             app.UseHttpsRedirection();
-
-            // JWT Middleware
+            app.UseStaticFiles();
+            // ? CORS PH?I TR??C AUTH
+            app.UseCors("AllowAll");
+            
             app.UseAuthentication();
             app.UseAuthorization();
 
