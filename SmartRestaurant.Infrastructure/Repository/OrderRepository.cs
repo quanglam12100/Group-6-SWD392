@@ -27,11 +27,16 @@ namespace SmartRestaurant.Infrastructure.Repository
         public async Task<List<Order>> GetAllAsync()
         {
             return await _context.Orders
-        .Include(o => o.Table)
-        .Include(o => o.Staff)
-        .Include(o => o.OrderDetails)
-        .OrderByDescending(o => o.CreatedAt)
-        .ToListAsync();
+                .Include(o => o.Table)
+                .Include(o => o.Staff)
+                .Include(o => o.OrderDetails)
+                    .ThenInclude(d => d.ProductVariant)
+                        .ThenInclude(v => v.Product)
+                .Include(o => o.OrderDetails)
+                    .ThenInclude(d => d.OrderDetailToppings)
+                        .ThenInclude(t => t.Topping)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
         }
 
         public async  Task<Order?> GetByIdAsync(int id)
