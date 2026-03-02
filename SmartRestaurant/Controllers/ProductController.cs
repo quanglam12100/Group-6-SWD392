@@ -19,8 +19,22 @@ public class ProductController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var products = await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.ProductVariants)
+            .Where(p => (bool)p.IsActive)
+            .Select(p => new
+            {
+                productId = p.Id,
+                name = p.Name,
+                description = p.Description,
+                imageUrl = p.ImageUrl,
+                categoryId = p.CategoryId,
+                categoryName = p.Category.Name,
+                variants = p.ProductVariants.Select(v => new
+                {
+                    id = v.Id,
+                    sizeName = v.SizeName,
+                    price = v.Price
+                }).ToList()
+            })
             .ToListAsync();
 
         return Ok(products);

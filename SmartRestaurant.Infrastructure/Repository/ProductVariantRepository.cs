@@ -32,6 +32,7 @@ namespace SmartRestaurant.Infrastructure.Repository
         {
             
             return await _context.ProductVariants
+                .Include(v => v.Product)
                                  .Where(p => ids.Contains(p.Id))
                                  .ToListAsync();
         }

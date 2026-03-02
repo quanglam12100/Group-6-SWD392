@@ -21,15 +21,41 @@ namespace SmartRestaurant.Application.Services
         {
             _unitOfWork = unitOfWork;
         }
-        public async  Task<List<TableResponseDto>> GetAllTablesAsync()
+        public async Task<List<TableResponseDto>> GetAllTablesAsync()
         {
             var tables = await _unitOfWork.Tables.GetAllAsync();
+            var orders = await _unitOfWork.Orders.GetAllAsync();
 
-            return tables.Select(t => new TableResponseDto
+            return tables.Select(t =>
             {
-                Id = t.Id,
-                Name = t.Name ?? "",
-                Status = t.Status
+                var currentOrder = orders
+                    .Where(o => o.TableId == t.Id && o.PaymentStatus == "unpaid")
+                    .OrderByDescending(o => o.CreatedAt)
+                    .FirstOrDefault();
+
+                return new TableResponseDto
+                {
+                    Id = t.Id,
+                    Name = t.Name ?? "",
+                    Status = t.Status,
+                    CurrentOrder = currentOrder == null ? null : new OrderSummaryDto
+                    {
+                        OrderId = currentOrder.Id,
+                        OrderCode = currentOrder.OrderCode ?? "",
+                        OrderType = currentOrder.OrderType ?? "dine_in",
+                        TableName = currentOrder.Table?.Name,
+                        StaffName = currentOrder.Staff?.Fullname,
+                        CustomerName = currentOrder.CustomerName,
+                        CustomerPhone = currentOrder.CustomerPhone,
+                        DeliveryStatus = currentOrder.DeliveryStatus,
+                        TotalAmount = (decimal)currentOrder.TotalAmount,
+                        PaymentStatus = currentOrder.PaymentStatus,
+                        CreatedAt = currentOrder.CreatedAt,
+                        TotalItems = currentOrder.OrderDetails
+                            .Where(d => d.Status != "cancelled")
+                            .Sum(d => d.Quantity ?? 0)
+                    }
+                };
             }).ToList();
         }
 
