@@ -16,80 +16,81 @@ public class PaymentsController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// API Checkout (Tính tiền, đóng bàn).
-    /// - Tìm order đang mở của bàn.
-    /// - Tính lại tổng tiền nếu cần.
-    /// - Đánh dấu paid và giải phóng bàn.
-    /// </summary>
-    [HttpPost("checkout")]
-    public async Task<IActionResult> CheckoutAsync([FromBody] CheckoutRequest request)
+    // =====================================================
+    // CHECKOUT THEO ORDER ID
+    // POST: api/Payments/checkout/{orderId}
+    // =====================================================
+    [HttpPost("checkout/{orderId}")]
+    public async Task<IActionResult> CheckoutByOrder(
+        int orderId,
+        [FromBody] CheckoutRequest request)
     {
-        var table = await _context.Tables.FirstOrDefaultAsync(t => t.Id == request.TableId);
-        if (table == null)
-        {
-            return NotFound($"Bàn {request.TableId} không tồn tại.");
-        }
-
-        // Lấy order mới nhất của bàn chưa thanh toán
         var order = await _context.Orders
-            .Where(o => o.TableId == request.TableId && o.PaymentStatus != "paid")
-            .OrderByDescending(o => o.CreatedAt)
-            .FirstOrDefaultAsync();
+            .Include(o => o.Table)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
 
         if (order == null)
         {
-            return BadRequest($"Không tìm thấy order đang mở cho bàn {request.TableId}.");
+            return NotFound(new { message = $"Order {orderId} không tồn tại." });
         }
 
-        // Nếu total_amount đang null hoặc 0 thì tính lại từ chi tiết
+        if (order.PaymentStatus == "paid")
+        {
+            return BadRequest(new { message = "Order đã được thanh toán." });
+        }
+
+        // ================= TÍNH LẠI TỔNG TIỀN =================
         if (order.TotalAmount == null || order.TotalAmount == 0)
         {
-            var totalFromDetails =
-                from detail in _context.OrderDetails
-                where detail.OrderId == order.Id
-                join variant in _context.ProductVariants on detail.ProductVariantId equals variant.Id
-                select (variant.Price ?? 0) * (detail.Quantity ?? 0);
+            var details = await _context.OrderDetails
+                .Where(d => d.OrderId == order.Id && d.Status != "cancelled")
+                .Include(d => d.ProductVariant)
+                .Include(d => d.OrderDetailToppings)
+                .ToListAsync();
 
-            var sum = await totalFromDetails.SumAsync();
-
-            // Cộng thêm topping nếu có
-            var toppingsTotal =
-                from dt in _context.OrderDetails
-                where dt.OrderId == order.Id
-                join odt in _context.OrderDetailToppings on dt.Id equals odt.OrderDetailId
-                select (odt.PriceAtPurchase ?? 0);
-
-            sum += await toppingsTotal.SumAsync();
+            decimal sum = 0;
+            foreach (var d in details)
+            {
+                decimal unitPrice = d.ProductVariant?.Price ?? 0;
+                decimal toppingTotal = d.OrderDetailToppings.Sum(t => t.PriceAtPurchase ?? 0) * (d.Quantity ?? 0);
+                sum += (unitPrice * (d.Quantity ?? 0)) + toppingTotal;
+            }
 
             order.TotalAmount = sum;
         }
 
+        // ================= CẬP NHẬT THANH TOÁN =================
         order.PaymentStatus = "paid";
-        order.PaymentMethod = string.IsNullOrWhiteSpace(request.PaymentMethod) ? order.PaymentMethod : request.PaymentMethod;
+        order.PaymentMethod = string.IsNullOrWhiteSpace(request?.PaymentMethod)
+            ? "cash"
+            : request.PaymentMethod;
+
         order.ClosedAt = DateTime.UtcNow;
 
-        // Đóng bàn
-        table.Status = "available";
+        // ================= MỞ LẠI BÀN =================
+        if (order.Table != null)
+        {
+            order.Table.Status = "available";
+        }
 
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Checkout thành công.",
+            message = "Thanh toán thành công",
             orderId = order.Id,
-            tableId = table.Id,
             totalAmount = order.TotalAmount,
             paymentMethod = order.PaymentMethod,
             closedAt = order.ClosedAt
         });
     }
 
-    /// <summary>
-    /// Báo cáo doanh thu theo ngày.
-    /// </summary>
+    // =====================================================
+    // DOANH THU THEO NGÀY
+    // GET: api/Payments/revenue/daily?date=2025-03-01
+    // =====================================================
     [HttpGet("revenue/daily")]
-    public async Task<ActionResult<RevenueDailyResponse>> GetDailyRevenueAsync([FromQuery] DateTime? date)
+    public async Task<IActionResult> GetDailyRevenueAsync([FromQuery] DateTime? date)
     {
         var targetDate = (date ?? DateTime.UtcNow).Date;
 
@@ -102,25 +103,26 @@ public class PaymentsController : ControllerBase
 
         var total = paidOrders.Sum(o => o.TotalAmount ?? 0);
 
-        var result = new RevenueDailyResponse
+        return Ok(new
         {
-            Date = targetDate,
-            TotalRevenue = total,
-            PaidOrderCount = paidOrders.Count
-        };
-
-        return Ok(result);
+            date = targetDate,
+            totalRevenue = total,
+            paidOrderCount = paidOrders.Count
+        });
     }
 
-    /// <summary>
-    /// Báo cáo doanh thu theo tháng.
-    /// </summary>
+    // =====================================================
+    // DOANH THU THEO THÁNG
+    // GET: api/Payments/revenue/monthly?year=2025&month=3
+    // =====================================================
     [HttpGet("revenue/monthly")]
-    public async Task<ActionResult<RevenueMonthlyResponse>> GetMonthlyRevenueAsync([FromQuery] int year, [FromQuery] int month)
+    public async Task<IActionResult> GetMonthlyRevenueAsync(
+        [FromQuery] int year,
+        [FromQuery] int month)
     {
-        if (year <= 0 || month is < 1 or > 12)
+        if (year <= 0 || month < 1 || month > 12)
         {
-            return BadRequest("Year/month không hợp lệ.");
+            return BadRequest(new { message = "Year/month không hợp lệ." });
         }
 
         var paidOrders = await _context.Orders
@@ -133,15 +135,12 @@ public class PaymentsController : ControllerBase
 
         var total = paidOrders.Sum(o => o.TotalAmount ?? 0);
 
-        var result = new RevenueMonthlyResponse
+        return Ok(new
         {
-            Year = year,
-            Month = month,
-            TotalRevenue = total,
-            PaidOrderCount = paidOrders.Count
-        };
-
-        return Ok(result);
+            year,
+            month,
+            totalRevenue = total,
+            paidOrderCount = paidOrders.Count
+        });
     }
 }
-

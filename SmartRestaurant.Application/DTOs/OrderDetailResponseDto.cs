@@ -26,9 +26,9 @@ namespace SmartRestaurant.Application.DTOs
         public List<BillItemDto> Items { get; set; } = new();
 
         
-        public decimal SubTotal => Items.Sum(i => i.LineTotal);
+        public decimal SubTotal => Items.Where(i => i.Status != "cancelled").Sum(i => i.LineTotal);
         public decimal TotalAmount => SubTotal;
-        public int TotalItems => Items.Sum(i => i.Quantity);
+        public int TotalItems => Items.Where(i => i.Status != "cancelled").Sum(i => i.Quantity);
 
         
         public string? PaymentMethod { get; set; }

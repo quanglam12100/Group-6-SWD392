@@ -16,6 +16,7 @@ namespace SmartRestaurant.Application.DTOs
         public List<BillToppingDto> Toppings { get; set; } = new();
         public decimal ToppingTotal => Toppings.Sum(t => t.Price) * Quantity;
         public decimal LineTotal => (UnitPrice + Toppings.Sum(t => t.Price)) * Quantity;
+        public string Status { get; set; } = "pending"; // pending, cooking, ready, served, cancelled
         public string? VoiceNote { get; set; }          // Ghi chú: "ít đá", "nhiều đường"
     }
 }

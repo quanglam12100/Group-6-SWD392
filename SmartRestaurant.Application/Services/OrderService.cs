@@ -86,6 +86,7 @@ namespace SmartRestaurant.Application.Services
                 VariantName = detail.ProductVariant?.SizeName ?? "",
                 Quantity = detail.Quantity ?? 0,
                 UnitPrice = detail.ProductVariant?.Price ?? 0,
+                Status = detail.Status,
                 VoiceNote = detail.VoiceNote,
                 Toppings = detail.OrderDetailToppings.Select(t => new BillToppingDto
                 {
@@ -112,6 +113,18 @@ namespace SmartRestaurant.Application.Services
                 PaymentMethod = order.PaymentMethod,
                 PaymentStatus = order.PaymentStatus
             };
+        }
+
+        private decimal CalculateTotal(Order order)
+        {
+            return order.OrderDetails
+                .Where(d => d.Status != "cancelled")
+                .Sum(d =>
+                {
+                    decimal unitPrice = d.ProductVariant?.Price ?? 0;
+                    decimal toppingTotal = d.OrderDetailToppings.Sum(t => t.PriceAtPurchase ?? 0) * (d.Quantity ?? 0);
+                    return (unitPrice * (d.Quantity ?? 0)) + toppingTotal;
+                });
         }
 
        
@@ -278,24 +291,27 @@ namespace SmartRestaurant.Application.Services
             await _unitOfWork.CommitAsync();
         }
 
-        public async  Task<List<OrderSummaryDto>> GetAllOrdersAsync()
+        public async Task<List<OrderSummaryDto>> GetAllOrdersAsync()
         {
             var orders = await _unitOfWork.Orders.GetAllAsync();
 
-            return orders.Select(o => new OrderSummaryDto
+            return orders.Select(o =>
             {
-                OrderId = o.Id,
-                OrderCode = o.OrderCode ?? "",
-                OrderType = o.OrderType ?? "dine_in",
-                TableName = o.Table?.Name,
-                StaffName = o.Staff?.Fullname,
-                CustomerName = o.CustomerName,
-                CustomerPhone = o.CustomerPhone,
-                DeliveryStatus = o.DeliveryStatus,
-                TotalAmount = o.TotalAmount ?? 0,
-                PaymentStatus = o.PaymentStatus,
-                CreatedAt = o.CreatedAt,
-                TotalItems = o.OrderDetails.Count
+                return new OrderSummaryDto
+                {
+                    OrderId = o.Id,
+                    OrderCode = o.OrderCode ?? "",
+                    OrderType = o.OrderType ?? "dine_in",
+                    TableName = o.Table?.Name,
+                    StaffName = o.Staff?.Fullname,
+                    CustomerName = o.CustomerName,
+                    CustomerPhone = o.CustomerPhone,
+                    DeliveryStatus = o.DeliveryStatus,
+                    TotalAmount = CalculateTotal(o),
+                    PaymentStatus = o.PaymentStatus,
+                    CreatedAt = o.CreatedAt,
+                    TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0)
+                };
             }).ToList();
         }
     }
