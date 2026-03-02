@@ -307,7 +307,8 @@ namespace SmartRestaurant.Application.Services
                     CustomerName = o.CustomerName,
                     CustomerPhone = o.CustomerPhone,
                     DeliveryStatus = o.DeliveryStatus,
-                    TotalAmount = CalculateTotal(o),
+                    //TotalAmount = CalculateTotal(o),
+                    TotalAmount = (decimal)o.TotalAmount,
                     PaymentStatus = o.PaymentStatus,
                     CreatedAt = o.CreatedAt,
                     TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0)
