@@ -16,7 +16,7 @@ namespace SmartRestaurant.Controllers
         }
 
         // GET /api/tables
-        [HttpGet]
+        [HttpGet("GetAllTable")]
         public async Task<IActionResult> GetAllTables()
         {
             var tables = await _tableService.GetAllTablesAsync();

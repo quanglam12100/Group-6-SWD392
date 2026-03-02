@@ -95,7 +95,7 @@ namespace SmartRestaurant.Controllers
         }
 
         // GET /api/orders
-        [HttpGet]
+        [HttpGet("GetAllOrders")]
         public async Task<IActionResult> GetAllOrders()
         {
             var orders = await _orderService.GetAllOrdersAsync();
