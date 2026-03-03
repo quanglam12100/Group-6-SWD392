@@ -16,7 +16,7 @@ namespace SmartRestaurant
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Controllers + Fix JSON Cycle
+            // ================= Controllers =================
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
                 {
@@ -24,33 +24,31 @@ namespace SmartRestaurant
                         System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                 });
 
-            // Database
-            builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
-                options.UseSqlServer(
-                    builder.Configuration.GetConnectionString("DefaultConnection")
-                ));
+// ================= DB Context =================
+builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    )
+);
 
-            // SignalR (Realtime)
-            builder.Services.AddSignalR();
+// ================= SignalR =================
+builder.Services.AddSignalR();
 
-            // CORS (Frontend + WebSocket)
-            builder.Services.AddCors(options =>
-            {
-                options.AddDefaultPolicy(policy =>
-                {
-                    policy
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials()
-                        .SetIsOriginAllowed(_ => true);
-                });
-            });
-
-            // Load JWT Key safely
+// ================= CORS =================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins() // frontend URL
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
             var jwtKey = builder.Configuration["Jwt:Key"]
                 ?? throw new Exception("JWT Key is missing in appsettings.json");
 
-            // JWT Authentication
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -83,7 +81,7 @@ namespace SmartRestaurant
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Description = "Enter JWT token like: Bearer {your token}"
+                    Description = "Enter: Bearer {your_token}"
                 });
 
                 c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -113,6 +111,7 @@ namespace SmartRestaurant
 
             var app = builder.Build();
 
+            // ================= Middleware =================
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -123,9 +122,13 @@ namespace SmartRestaurant
 
             app.UseRouting();
 
-            app.UseCors();
+           
 
             // JWT Middleware (QUAN TRỌNG: Authentication trước Authorization)
+            app.UseStaticFiles();
+            // ? CORS PH?I TR??C AUTH
+            app.UseCors("AllowAll");
+            
             app.UseAuthentication();
             app.UseAuthorization();
 
