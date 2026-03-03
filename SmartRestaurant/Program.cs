@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SmartRestaurant.Application.Interfaces;
@@ -24,30 +24,30 @@ namespace SmartRestaurant
                         System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                 });
 
-// ================= DB Context =================
-builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")
-    )
-);
+            // ================= DB Context =================
+            builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("DefaultConnection")
+                )
+            );
 
-// ================= SignalR =================
-builder.Services.AddSignalR();
+            // ================= SignalR (Từ HEAD - Cần cho Realtime) =================
+            builder.Services.AddSignalR();
 
-// ================= CORS =================
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy
-            .WithOrigins() // frontend URL
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
-});
+            // ================= CORS (Từ Vhuy - Cần để Frontend gọi được) =================
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+
+            // ================= JWT Authentication =================
             var jwtKey = builder.Configuration["Jwt:Key"]
-                ?? throw new Exception("JWT Key is missing in appsettings.json");
+                ?? throw new Exception("JWT Key missing");
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -63,12 +63,14 @@ builder.Services.AddCors(options =>
                         ValidAudience = builder.Configuration["Jwt:Audience"],
 
                         IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(jwtKey)
-                        )
+                            Encoding.UTF8.GetBytes(jwtKey))
                     };
                 });
 
-            // Swagger
+            // ================= Authorization (Từ Vhuy - Bắt buộc) =================
+            builder.Services.AddAuthorization();
+
+            // ================= Swagger =================
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
@@ -81,7 +83,7 @@ builder.Services.AddCors(options =>
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Description = "Enter: Bearer {your_token}"
+                    Description = "Enter: Bearer {token}"
                 });
 
                 c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -100,7 +102,7 @@ builder.Services.AddCors(options =>
                 });
             });
 
-            // DI
+            // ================= DI (Dependency Injection) =================
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
@@ -111,24 +113,21 @@ builder.Services.AddCors(options =>
 
             var app = builder.Build();
 
-            // ================= Middleware =================
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+            // ================= Middleware Pipeline =================
+            
+            // Swagger luôn bật để dễ test (bạn có thể bọc trong if (app.Environment.IsDevelopment()) nếu muốn)
+            app.UseSwagger();
+            app.UseSwaggerUI();
 
             app.UseHttpsRedirection();
-
             app.UseRouting();
 
-           
-
-            // JWT Middleware (QUAN TRỌNG: Authentication trước Authorization)
             app.UseStaticFiles();
-            // ? CORS PH?I TR??C AUTH
-            app.UseCors("AllowAll");
-            
+
+            // UseCors phải đặt giữa UseRouting và UseAuthorization
+            app.UseCors("AllowAll"); 
+
+            // Auth Middleware (QUAN TRỌNG: Authentication trước Authorization)
             app.UseAuthentication();
             app.UseAuthorization();
 
