@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartRestaurant.Infrastructure.Data;
+using SmartRestaurant.Application.DTOs;
 using SmartRestaurant.Domain.Entities;
 
 [ApiController]
@@ -14,58 +15,124 @@ public class ProductController : ControllerBase
         _context = context;
     }
 
-    // GET: api/products
+    // ================= GET ALL =================
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var products = await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.ProductVariants)
+            .Include(x => x.Category)
+            .Include(x => x.ProductVariants)
+            .Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                ImageUrl = p.ImageUrl,
+                IsActive = p.IsActive,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+
+                Variants = p.ProductVariants.Select(v => new ProductVariantDto
+                {
+                    Id = v.Id,
+                    SizeName = v.SizeName,
+                    Price = v.Price
+                }).ToList()
+            })
             .ToListAsync();
 
         return Ok(products);
     }
 
-    // GET: api/products/{id}
+    // ================= GET BY ID =================
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> Get(int id)
+    {
+        var p = await _context.Products
+            .Include(x => x.Category)
+            .Include(x => x.ProductVariants)
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (p == null) return NotFound();
+
+        var result = new ProductDto
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Description = p.Description,
+            ImageUrl = p.ImageUrl,
+            IsActive = p.IsActive,
+            CategoryId = p.CategoryId,
+            CategoryName = p.Category?.Name,
+
+            Variants = p.ProductVariants.Select(v => new ProductVariantDto
+            {
+                Id = v.Id,
+                SizeName = v.SizeName,
+                Price = v.Price
+            }).ToList()
+        };
+
+        return Ok(result);
+    }
+
+    // ================= CREATE =================
+    [HttpPost]
+    public async Task<IActionResult> Create(ProductDto dto)
+    {
+        var product = new Product
+        {
+            Name = dto.Name,
+            Description = dto.Description,
+            ImageUrl = dto.ImageUrl,
+            IsActive = dto.IsActive,
+            CategoryId = dto.CategoryId,
+            ProductVariants = dto.Variants.Select(v => new ProductVariant
+            {
+                SizeName = v.SizeName,
+                Price = v.Price
+            }).ToList()
+        };
+
+        _context.Products.Add(product);
+        await _context.SaveChangesAsync();
+
+        return Ok(product.Id);
+    }
+
+    // ================= UPDATE =================
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, ProductDto dto)
     {
         var product = await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.ProductVariants)
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .Include(x => x.ProductVariants)
+            .FirstOrDefaultAsync(x => x.Id == id);
 
         if (product == null) return NotFound();
-        return Ok(product);
-    }
 
-    // POST: api/products
-    [HttpPost]
-    public async Task<IActionResult> Create(Product model)
-    {
-        _context.Products.Add(model);
-        await _context.SaveChangesAsync();
-        return Ok(model);
-    }
+        // update product
+        product.Name = dto.Name;
+        product.Description = dto.Description;
+        product.ImageUrl = dto.ImageUrl;
+        product.IsActive = dto.IsActive;
+        product.CategoryId = dto.CategoryId;
 
-    // PUT: api/products/{id}
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, Product model)
-    {
-        var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound();
+        // xoá variant cũ
+        _context.ProductVariants.RemoveRange(product.ProductVariants);
 
-        product.Name = model.Name;
-        product.Description = model.Description;
-        product.ImageUrl = model.ImageUrl;
-        product.CategoryId = model.CategoryId;
-        product.IsActive = model.IsActive;
+        // thêm variant mới
+        product.ProductVariants = dto.Variants.Select(v => new ProductVariant
+        {
+            SizeName = v.SizeName,
+            Price = v.Price
+        }).ToList();
 
         await _context.SaveChangesAsync();
-        return Ok(product);
+
+        return Ok("Update thành công");
     }
 
-    // DELETE: api/products/{id}
+    // ================= DELETE =================
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -74,6 +141,7 @@ public class ProductController : ControllerBase
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
-        return Ok();
+
+        return Ok("Delete thành công");
     }
 }

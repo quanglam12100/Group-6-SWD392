@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SmartRestaurant.Infrastructure.Data;
@@ -20,28 +20,25 @@ namespace SmartRestaurant
                         System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                 });
 
-            // ================= DB Context =================
+            // ================= DB =================
             builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
                 options.UseSqlServer(
-                    builder.Configuration.GetConnectionString("DefaultConnection")
-                )
-            );
+                    builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // ================= CORS (CHO FE HTML / JS) =================
+            // ================= CORS =================
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy
-                        .AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader();
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
                 });
             });
 
             // ================= JWT =================
             var jwtKey = builder.Configuration["Jwt:Key"]
-                ?? throw new Exception("JWT Key is missing in appsettings.json");
+                ?? throw new Exception("JWT Key missing");
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -57,10 +54,11 @@ namespace SmartRestaurant
                         ValidAudience = builder.Configuration["Jwt:Audience"],
 
                         IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(jwtKey)
-                        )
+                            Encoding.UTF8.GetBytes(jwtKey))
                     };
                 });
+
+            builder.Services.AddAuthorization(); // ✅ BẮT BUỘC
 
             // ================= Swagger =================
             builder.Services.AddEndpointsApiExplorer();
@@ -75,7 +73,7 @@ namespace SmartRestaurant
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Description = "Enter: Bearer {your_token}"
+                    Description = "Enter: Bearer {token}"
                 });
 
                 c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -97,17 +95,14 @@ namespace SmartRestaurant
             var app = builder.Build();
 
             // ================= Middleware =================
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+            app.UseSwagger();        // ✅ luôn bật cho demo
+            app.UseSwaggerUI();
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-            // ? CORS PH?I TR??C AUTH
-            app.UseCors("AllowAll");
-            
+
+            app.UseCors("AllowAll"); // trước auth
+
             app.UseAuthentication();
             app.UseAuthorization();
 
