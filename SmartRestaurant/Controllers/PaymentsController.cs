@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartRestaurant.Infrastructure.Data;
 using SmartRestaurant.Models;
+using SmartRestaurant.Application.Interfaces;
 
 namespace SmartRestaurant.Controllers;
 
@@ -10,10 +11,23 @@ namespace SmartRestaurant.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly SmartRestaurantDbContext _context;
+    private readonly IOrderService _orderService;
 
-    public PaymentsController(SmartRestaurantDbContext context)
+    public PaymentsController(SmartRestaurantDbContext context, IOrderService orderService)
     {
         _context = context;
+        _orderService = orderService;
+    }
+
+    // =====================================================
+    // LẤY TẤT CẢ LỊCH SỬ THANH TOÁN (CHECKOUTS)
+    // GET: api/Payments/checkouts
+    // =====================================================
+    [HttpGet("checkouts")]
+    public async Task<IActionResult> GetAllCheckouts()
+    {
+        var paidOrders = await _orderService.GetPaidOrdersAsync();
+        return Ok(paidOrders);
     }
 
     /// <summary>

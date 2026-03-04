@@ -19,8 +19,25 @@ namespace SmartRestaurant
             builder.Services.AddDbContext<SmartRestaurantDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+<<<<<<< Updated upstream
             // Realtime (SignalR)
             builder.Services.AddSignalR();
+=======
+// ================= CORS =================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173") // frontend URL
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+            var jwtKey = builder.Configuration["Jwt:Key"]
+                ?? throw new Exception("JWT Key is missing in appsettings.json");
+>>>>>>> Stashed changes
 
             // CORS for frontend & websocket clients (adjust origins as needed)
             builder.Services.AddCors(options =>
