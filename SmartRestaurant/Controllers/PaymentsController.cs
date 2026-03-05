@@ -18,7 +18,21 @@ public class PaymentsController : ControllerBase
         _context = context;
         _orderService = orderService;
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+    }
+
+    // =====================================================
+    // LẤY TẤT CẢ LỊCH SỬ THANH TOÁN (CHECKOUTS)
+    // GET: api/Payments/checkouts
+    // =====================================================
+    [HttpGet("checkouts")]
+    public async Task<IActionResult> GetAllCheckouts()
+    {
+        var paidOrders = await _orderService.GetPaidOrdersAsync();
+        return Ok(paidOrders);
+>>>>>>> Stashed changes
     }
 
     // =====================================================

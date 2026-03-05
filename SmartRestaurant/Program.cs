@@ -65,8 +65,12 @@ builder.Services.AddCors(options =>
             }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             app.UseHttpsRedirection();
 
+=======
+            // app.UseHttpsRedirection();
+>>>>>>> Stashed changes
 =======
             // app.UseHttpsRedirection();
 >>>>>>> Stashed changes
