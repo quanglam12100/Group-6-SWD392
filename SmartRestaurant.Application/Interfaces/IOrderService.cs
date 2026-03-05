@@ -17,6 +17,6 @@ namespace SmartRestaurant.Application.Interfaces
         Task UpdateDeliveryStatusAsync(int id, string deliveryStatus);
 
         Task<List<OrderSummaryDto>> GetAllOrdersAsync();
-
+        Task<List<OrderSummaryDto>> GetPaidOrdersAsync();
     }
 }

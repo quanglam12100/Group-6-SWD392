@@ -307,8 +307,32 @@ namespace SmartRestaurant.Application.Services
                     CustomerName = o.CustomerName,
                     CustomerPhone = o.CustomerPhone,
                     DeliveryStatus = o.DeliveryStatus,
-                    //TotalAmount = CalculateTotal(o),
-                    TotalAmount = (decimal)o.TotalAmount,
+                    TotalAmount = CalculateTotal(o),
+                    PaymentStatus = o.PaymentStatus,
+                    CreatedAt = o.CreatedAt,
+                    TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0)
+                };
+            }).ToList();
+        }
+
+        public async Task<List<OrderSummaryDto>> GetPaidOrdersAsync()
+        {
+            var orders = await _unitOfWork.Orders.GetAllAsync();
+            var paidOrders = orders.Where(o => o.PaymentStatus == "paid").ToList();
+
+            return paidOrders.Select(o =>
+            {
+                return new OrderSummaryDto
+                {
+                    OrderId = o.Id,
+                    OrderCode = o.OrderCode ?? "",
+                    OrderType = o.OrderType ?? "dine_in",
+                    TableName = o.Table?.Name,
+                    StaffName = o.Staff?.Fullname,
+                    CustomerName = o.CustomerName,
+                    CustomerPhone = o.CustomerPhone,
+                    DeliveryStatus = o.DeliveryStatus,
+                    TotalAmount = CalculateTotal(o),
                     PaymentStatus = o.PaymentStatus,
                     CreatedAt = o.CreatedAt,
                     TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0)
