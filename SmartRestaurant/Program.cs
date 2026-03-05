@@ -64,8 +64,12 @@ builder.Services.AddCors(options =>
                 app.UseSwaggerUI();
             }
 
+<<<<<<< Updated upstream
             app.UseHttpsRedirection();
 
+=======
+            // app.UseHttpsRedirection();
+>>>>>>> Stashed changes
             app.UseRouting();
 
             app.UseCors();
