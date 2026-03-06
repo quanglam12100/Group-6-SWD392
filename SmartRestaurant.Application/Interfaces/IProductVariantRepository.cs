@@ -6,5 +6,6 @@ namespace SmartRestaurant.Application.Interfaces
     {
         Task<List<ProductVariant>> GetByIdsAsync(List<int> ids);
         Task<List<ProductVariant>> GetAllWithKeywordsAsync();
+        Task<List<ProductVariant>> GetAllAsync();
     }
 }

@@ -18,6 +18,13 @@ namespace SmartRestaurant.Infrastructure.Repository
         {
             _context = context;
         }
+        
+        public async Task<List<ProductVariant>> GetAllAsync()
+        {
+            return await _context.ProductVariants
+                .Include(v => v.Product)
+                .ToListAsync();
+        }
 
         public async Task<List<ProductVariant>> GetAllWithKeywordsAsync()
         {

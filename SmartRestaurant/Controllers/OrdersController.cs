@@ -101,5 +101,12 @@ namespace SmartRestaurant.Controllers
             var orders = await _orderService.GetAllOrdersAsync();
             return Ok(orders);
         }
+
+        [HttpGet("staff/{staffId}")]
+        public async Task<IActionResult> GetOrdersByStaffId(int staffId)
+        {
+            var orders = await _orderService.GetOrdersByStaffIdAsync(staffId);
+            return Ok(orders);
+        }
     }
 }

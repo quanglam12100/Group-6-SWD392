@@ -1,4 +1,4 @@
-@SmartRestaurant_HostAddress = http://localhost:5121
+@SmartRestaurant_HostAddress = https://localhost:7031
 
 GET {{SmartRestaurant_HostAddress}}/weatherforecast/
 Accept: application/json

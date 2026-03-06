@@ -8,10 +8,20 @@ using SmartRestaurant.Domain.Entities;
 public class ProductVariantController : ControllerBase
 {
     private readonly SmartRestaurantDbContext _context;
+    private readonly SmartRestaurant.Application.Interfaces.IProductVariantRepository _variantRepository;
 
-    public ProductVariantController(SmartRestaurantDbContext context)
+    public ProductVariantController(SmartRestaurantDbContext context, SmartRestaurant.Application.Interfaces.IProductVariantRepository variantRepository)
     {
         _context = context;
+        _variantRepository = variantRepository;
+    }
+
+    // GET: api/variants
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var variants = await _variantRepository.GetAllAsync();
+        return Ok(variants);
     }
 
     // GET: api/variants/product/{productId}

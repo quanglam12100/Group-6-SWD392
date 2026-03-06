@@ -79,24 +79,29 @@ namespace SmartRestaurant.Application.Services
             if (order == null)
                 throw new KeyNotFoundException($"Không tìm thấy đơn hàng #{id}");
 
-            var billItems = order.OrderDetails.Select(detail => new BillItemDto
-            {
-                OrderDetailId = detail.Id,
-                ProductName = detail.ProductVariant?.Product?.Name ?? "",
-                VariantName = detail.ProductVariant?.SizeName ?? "",
-                Quantity = detail.Quantity ?? 0,
-                UnitPrice = detail.ProductVariant?.Price ?? 0,
-                Status = detail.Status,
-                VoiceNote = detail.VoiceNote,
-                Toppings = detail.OrderDetailToppings.Select(t => new BillToppingDto
+            var billItems = order.OrderDetails.Select(detail => {
+                var item = new BillItemDto
                 {
-                    ToppingId = t.ToppingId ?? 0,
-                    ToppingName = t.Topping?.Name ?? "",
-                    Price = t.PriceAtPurchase ?? 0
-                }).ToList()
+                    OrderDetailId = detail.Id,
+                    ProductName = detail.ProductVariant?.Product?.Name ?? "",
+                    VariantName = detail.ProductVariant?.SizeName ?? "",
+                    Quantity = detail.Quantity ?? 0,
+                    UnitPrice = detail.ProductVariant?.Price ?? 0,
+                    Status = detail.Status,
+                    VoiceNote = detail.VoiceNote,
+                    Toppings = detail.OrderDetailToppings.Select(t => new BillToppingDto
+                    {
+                        ToppingId = t.ToppingId ?? 0,
+                        ToppingName = t.Topping?.Name ?? "",
+                        Price = t.PriceAtPurchase ?? 0
+                    }).ToList()
+                };
+                item.ToppingTotal = item.Toppings.Sum(t => t.Price) * item.Quantity;
+                item.LineTotal = (item.UnitPrice * item.Quantity) + item.ToppingTotal;
+                return item;
             }).ToList();
 
-            return new OrderDetailResponseDto
+            var response = new OrderDetailResponseDto
             {
                 OrderId = order.Id,
                 OrderCode = order.OrderCode ?? "",
@@ -113,6 +118,11 @@ namespace SmartRestaurant.Application.Services
                 PaymentMethod = order.PaymentMethod,
                 PaymentStatus = order.PaymentStatus
             };
+            response.SubTotal = billItems.Where(i => i.Status != "cancelled").Sum(i => i.LineTotal);
+            response.TotalAmount = response.SubTotal;
+            response.TotalItems = billItems.Where(i => i.Status != "cancelled").Sum(i => i.Quantity);
+
+            return response;
         }
 
         private decimal CalculateTotal(Order order)
@@ -210,7 +220,7 @@ namespace SmartRestaurant.Application.Services
             for (int i = 0; i < billItems.Count; i++)
                 billItems[i].OrderDetailId = order.OrderDetails.ElementAt(i).Id;
 
-            return new CreateOrderResponseDto
+            var response = new CreateOrderResponseDto
             {
                 OrderId = order.Id,
                 OrderCode = order.OrderCode!,
@@ -225,6 +235,11 @@ namespace SmartRestaurant.Application.Services
                 Items = billItems,
                 PaymentStatus = order.PaymentStatus
             };
+            response.SubTotal = billItems.Sum(i => i.LineTotal);
+            response.TotalAmount = response.SubTotal;
+            response.TotalItems = billItems.Sum(i => i.Quantity);
+
+            return response;
         }
 
         private static string GenerateOrderCode() =>
@@ -321,6 +336,30 @@ namespace SmartRestaurant.Application.Services
             var paidOrders = orders.Where(o => o.PaymentStatus == "paid").ToList();
 
             return paidOrders.Select(o =>
+            {
+                return new OrderSummaryDto
+                {
+                    OrderId = o.Id,
+                    OrderCode = o.OrderCode ?? "",
+                    OrderType = o.OrderType ?? "dine_in",
+                    TableName = o.Table?.Name,
+                    StaffName = o.Staff?.Fullname,
+                    CustomerName = o.CustomerName,
+                    CustomerPhone = o.CustomerPhone,
+                    DeliveryStatus = o.DeliveryStatus,
+                    TotalAmount = CalculateTotal(o),
+                    PaymentStatus = o.PaymentStatus,
+                    CreatedAt = o.CreatedAt,
+                    TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0)
+                };
+            }).ToList();
+        }
+        public async Task<List<OrderSummaryDto>> GetOrdersByStaffIdAsync(int staffId)
+        {
+            var orders = await _unitOfWork.Orders.GetAllAsync();
+            var staffOrders = orders.Where(o => o.StaffId == staffId).ToList();
+
+            return staffOrders.Select(o =>
             {
                 return new OrderSummaryDto
                 {
