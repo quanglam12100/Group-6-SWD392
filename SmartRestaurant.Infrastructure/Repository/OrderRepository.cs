@@ -39,6 +39,17 @@ namespace SmartRestaurant.Infrastructure.Repository
                 .ToListAsync();
         }
 
+        public async  Task<IEnumerable<Order>> GetAllOrdersWithDetailsAsync()
+        {
+            return await _context.Orders
+             .Include(o => o.Table)
+             .Include(o => o.Staff)
+             .Include(o => o.OrderDetails)
+                 .ThenInclude(d => d.ProductVariant)
+                     .ThenInclude(pv => pv.Product)
+             .ToListAsync();
+        }
+
         public async  Task<Order?> GetByIdAsync(int id)
         {
             return await _context.Orders

@@ -24,7 +24,10 @@ namespace SmartRestaurant.Application.Services
         public async Task<List<TableResponseDto>> GetAllTablesAsync()
         {
             var tables = await _unitOfWork.Tables.GetAllAsync();
-            var orders = await _unitOfWork.Orders.GetAllAsync();
+
+            // 1️⃣ DÙNG HÀM CÓ KÈM DETAILS (Hàm mà bạn đã tạo ở bước trước)
+            // Để đảm bảo lấy được đầy đủ OrderDetails, ProductVariant, Product...
+            var orders = await _unitOfWork.Orders.GetAllOrdersWithDetailsAsync();
 
             return tables.Select(t =>
             {
@@ -37,7 +40,6 @@ namespace SmartRestaurant.Application.Services
                 {
                     Id = t.Id,
                     Name = t.Name ?? "",
-
                     Status = currentOrder != null ? "occupied" : t.Status,
 
                     CurrentOrder = currentOrder == null ? null : new OrderSummaryDto
@@ -54,8 +56,21 @@ namespace SmartRestaurant.Application.Services
                         PaymentStatus = currentOrder.PaymentStatus,
                         CreatedAt = currentOrder.CreatedAt,
                         TotalItems = currentOrder.OrderDetails
-                    .Where(d => d.Status != "cancelled")
-                    .Sum(d => d.Quantity ?? 0)
+                            .Where(d => d.Status != "cancelled")
+                            .Sum(d => d.Quantity ?? 0),
+
+                        Items = currentOrder.OrderDetails
+                            .Where(d => d.Status != "cancelled")
+                            .Select(d => new OrderItemDto
+                            {
+                                ProductName = d.ProductVariant?.Product?.Name != null
+                                    ? (string.IsNullOrEmpty(d.ProductVariant.SizeName)
+                                        ? d.ProductVariant.Product.Name
+                                        : $"{d.ProductVariant.Product.Name} ({d.ProductVariant.SizeName})")
+                                    : "Món ăn chưa rõ",
+                                Quantity = d.Quantity ?? 0,
+                                Price = d.ProductVariant?.Price ?? 0m
+                            }).ToList()
                     }
                 };
             }).ToList();

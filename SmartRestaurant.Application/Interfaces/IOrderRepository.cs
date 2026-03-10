@@ -8,5 +8,6 @@ namespace SmartRestaurant.Application.Interfaces
         Task<Order?> GetByIdAsync(int id);         
         Task UpdateAsync(Order order);
         Task<List<Order>> GetAllAsync();
+        Task<IEnumerable<Order>> GetAllOrdersWithDetailsAsync();
     }
 }

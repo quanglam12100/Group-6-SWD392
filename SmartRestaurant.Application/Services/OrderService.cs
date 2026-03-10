@@ -308,7 +308,8 @@ namespace SmartRestaurant.Application.Services
 
         public async Task<List<OrderSummaryDto>> GetAllOrdersAsync()
         {
-            var orders = await _unitOfWork.Orders.GetAllAsync();
+            // Dữ liệu lúc này đã có sẵn toàn bộ OrderDetails, ProductVariant, và Product
+            var orders = await _unitOfWork.Orders.GetAllOrdersWithDetailsAsync();
 
             return orders.Select(o =>
             {
@@ -325,7 +326,24 @@ namespace SmartRestaurant.Application.Services
                     TotalAmount = CalculateTotal(o),
                     PaymentStatus = o.PaymentStatus,
                     CreatedAt = o.CreatedAt,
-                    TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0)
+                    TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0),
+
+                    Items = o.OrderDetails
+                        .Where(d => d.Status != "cancelled") 
+                        .Select(d => new OrderItemDto
+                        {
+                           
+                            ProductName = d.ProductVariant?.Product?.Name != null
+                                ? (string.IsNullOrEmpty(d.ProductVariant.SizeName)
+                                    ? d.ProductVariant.Product.Name
+                                    : $"{d.ProductVariant.Product.Name} ({d.ProductVariant.SizeName})")
+                                : "Món ăn chưa rõ",
+
+                            Quantity = d.Quantity ?? 0,
+
+                           
+                            Price = d.ProductVariant?.Price ?? 0
+                        }).ToList()
                 };
             }).ToList();
         }
