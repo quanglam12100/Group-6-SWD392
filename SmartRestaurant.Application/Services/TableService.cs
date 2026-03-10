@@ -37,7 +37,9 @@ namespace SmartRestaurant.Application.Services
                 {
                     Id = t.Id,
                     Name = t.Name ?? "",
-                    Status = t.Status,
+
+                    Status = currentOrder != null ? "occupied" : t.Status,
+
                     CurrentOrder = currentOrder == null ? null : new OrderSummaryDto
                     {
                         OrderId = currentOrder.Id,
@@ -52,8 +54,8 @@ namespace SmartRestaurant.Application.Services
                         PaymentStatus = currentOrder.PaymentStatus,
                         CreatedAt = currentOrder.CreatedAt,
                         TotalItems = currentOrder.OrderDetails
-                            .Where(d => d.Status != "cancelled")
-                            .Sum(d => d.Quantity ?? 0)
+                    .Where(d => d.Status != "cancelled")
+                    .Sum(d => d.Quantity ?? 0)
                     }
                 };
             }).ToList();

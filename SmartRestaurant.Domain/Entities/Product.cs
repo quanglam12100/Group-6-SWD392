@@ -24,4 +24,5 @@ public partial class Product
     public virtual ICollection<ProductVariant> ProductVariants { get; set; } = new List<ProductVariant>();
 
     public virtual ICollection<VoiceLog> VoiceLogs { get; set; } = new List<VoiceLog>();
+    
 }

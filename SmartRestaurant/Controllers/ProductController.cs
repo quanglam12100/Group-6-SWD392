@@ -136,12 +136,25 @@ public class ProductController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound();
+        // 1. Tìm Product, nhớ .Include() thêm bảng Variants
+        var product = await _context.Products
+    .Include(p => p.ProductVariants)
+    .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (product == null)
+        {
+            return NotFound("Không tìm thấy sản phẩm");
+        }
+
+        if (product.ProductVariants != null && product.ProductVariants.Any())
+        {
+            _context.RemoveRange(product.ProductVariants);
+        }
 
         _context.Products.Remove(product);
+
         await _context.SaveChangesAsync();
 
-        return Ok("Delete thành công");
+        return Ok("Đã xóa sản phẩm thành công");
     }
 }

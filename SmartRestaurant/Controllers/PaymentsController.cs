@@ -82,9 +82,15 @@ public class PaymentsController : ControllerBase
         order.ClosedAt = DateTime.UtcNow;
 
         // ================= MỞ LẠI BÀN =================
-        if (order.Table != null)
+        if (order.TableId != null)
         {
-            order.Table.Status = "available";
+            var table = await _context.Tables
+                .FirstOrDefaultAsync(t => t.Id == order.TableId);
+
+            if (table != null)
+            {
+                table.Status = "available";
+            }
         }
 
         await _context.SaveChangesAsync();
@@ -106,23 +112,42 @@ public class PaymentsController : ControllerBase
     [HttpGet("revenue/daily")]
     public async Task<IActionResult> GetDailyRevenueAsync([FromQuery] DateTime? date)
     {
-        var targetDate = (date ?? DateTime.UtcNow).Date;
+       
+        var endDate = (date ?? DateTime.UtcNow).Date;
+        var startDate = endDate.AddDays(-29); 
 
+        
         var paidOrders = await _context.Orders
             .Where(o =>
                 o.PaymentStatus == "paid" &&
                 o.ClosedAt.HasValue &&
-                o.ClosedAt.Value.Date == targetDate)
+                o.ClosedAt >= startDate &&
+                o.ClosedAt < endDate.AddDays(1))
             .ToListAsync();
 
-        var total = paidOrders.Sum(o => o.TotalAmount ?? 0);
+        var result = new List<object>();
 
-        return Ok(new
+        for (int i = 0; i <= 29; i++)
         {
-            date = targetDate,
-            totalRevenue = total,
-            paidOrderCount = paidOrders.Count
-        });
+            var currentDate = startDate.AddDays(i);
+
+           
+            var dailyOrders = paidOrders
+                .Where(o => o.ClosedAt.Value.Date == currentDate)
+                .ToList();
+
+            var total = dailyOrders.Sum(o => o.TotalAmount ?? 0);
+
+            result.Add(new
+            {
+                date = currentDate.ToString("yyyy-MM-dd"), 
+                totalRevenue = total,
+                paidOrderCount = dailyOrders.Count
+            });
+        }
+
+       
+        return Ok(result);
     }
 
     // =====================================================
@@ -131,30 +156,47 @@ public class PaymentsController : ControllerBase
     // =====================================================
     [HttpGet("revenue/monthly")]
     public async Task<IActionResult> GetMonthlyRevenueAsync(
-        [FromQuery] int year,
-        [FromQuery] int month)
+     [FromQuery] int year,
+     [FromQuery] int month) 
     {
-        if (year <= 0 || month < 1 || month > 12)
+        if (year <= 0)
         {
-            return BadRequest(new { message = "Year/month không hợp lệ." });
+            return BadRequest(new { message = "Năm không hợp lệ." });
         }
+
+        
+        var startDate = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var endDate = startDate.AddYears(1);
 
         var paidOrders = await _context.Orders
             .Where(o =>
                 o.PaymentStatus == "paid" &&
                 o.ClosedAt.HasValue &&
-                o.ClosedAt.Value.Year == year &&
-                o.ClosedAt.Value.Month == month)
+                o.ClosedAt >= startDate &&
+                o.ClosedAt < endDate)
             .ToListAsync();
 
-        var total = paidOrders.Sum(o => o.TotalAmount ?? 0);
+       
+        var result = new List<object>();
 
-        return Ok(new
+        for (int m = 1; m <= 12; m++)
         {
-            year,
-            month,
-            totalRevenue = total,
-            paidOrderCount = paidOrders.Count
-        });
+           
+            var monthlyOrders = paidOrders
+                .Where(o => o.ClosedAt.Value.Month == m)
+                .ToList();
+
+            var total = monthlyOrders.Sum(o => o.TotalAmount ?? 0);
+
+            result.Add(new
+            {
+                year = year,
+                month = m,
+                totalRevenue = total,
+                paidOrderCount = monthlyOrders.Count
+            });
+        }
+
+        return Ok(result);
     }
 }

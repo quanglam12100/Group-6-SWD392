@@ -34,4 +34,5 @@ public partial class OrderDetail
     public virtual ICollection<OrderDetailTopping> OrderDetailToppings { get; set; } = new List<OrderDetailTopping>();
 
     public virtual ProductVariant? ProductVariant { get; set; }
+   
 }
