@@ -308,7 +308,6 @@ namespace SmartRestaurant.Application.Services
 
         public async Task<List<OrderSummaryDto>> GetAllOrdersAsync()
         {
-            // Dữ liệu lúc này đã có sẵn toàn bộ OrderDetails, ProductVariant, và Product
             var orders = await _unitOfWork.Orders.GetAllOrdersWithDetailsAsync();
 
             return orders.Select(o =>

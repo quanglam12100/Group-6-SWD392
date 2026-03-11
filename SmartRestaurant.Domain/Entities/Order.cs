@@ -42,4 +42,5 @@ public partial class Order
     public virtual Account? Staff { get; set; }
 
     public virtual Table? Table { get; set; }
+
 }

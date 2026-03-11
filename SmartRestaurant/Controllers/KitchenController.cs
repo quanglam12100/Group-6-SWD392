@@ -190,14 +190,13 @@ public class KitchenController : ControllerBase
     [HttpGet("orders")]
     public async Task<IActionResult> GetKitchenOrders()
     {
-        // Các trạng thái Bếp quan tâm
+        
         var activeStatuses = new[] { "pending", "cooking", "ready" };
 
         var orders = await _context.Orders
-            // Include các bảng liên quan để lấy tên bàn, tên món
             .Include(o => o.Table)
             .Include(o => o.OrderDetails)
-                .ThenInclude(od => od.ProductVariant) // Giả định ProductVariant liên kết Product
+                .ThenInclude(od => od.ProductVariant) 
                     .ThenInclude(pv => pv.Product)    // Cần check lại tên biến Product trong ProductVariant
             .Include(o => o.OrderDetails)
                 .ThenInclude(od => od.OrderDetailToppings)
@@ -208,7 +207,7 @@ public class KitchenController : ControllerBase
             .Select(o => new KitchenOrderDto
             {
                 OrderId = o.Id,
-                // Nếu Table null thì ghi mang về hoặc tên khách
+             
                 TableName = o.Table != null ? o.Table.Name : "Mang về/Khách lẻ",
                 OrderTime = o.CreatedAt.HasValue ? o.CreatedAt.Value.ToString("HH:mm") : "--:--",
 
@@ -280,6 +279,53 @@ public class KitchenController : ControllerBase
 
             return Ok(new { message = "Cập nhật thành công", orderDetailId = id, newStatus = request.Status });
         }
-    
+
+
+    [HttpGet("all-orders")]
+    public async Task<IActionResult> GetAllOrders()
+    {
+        // Không cần khai báo activeStatuses nữa vì mình lấy hết
+
+        var orders = await _context.Orders
+            .Include(o => o.Table)
+            .Include(o => o.OrderDetails)
+                .ThenInclude(od => od.ProductVariant)
+                    .ThenInclude(pv => pv.Product)
+            .Include(o => o.OrderDetails)
+                .ThenInclude(od => od.OrderDetailToppings)
+                    .ThenInclude(odt => odt.Topping)
+            .OrderByDescending(o => o.CreatedAt) 
+            .Select(o => new KitchenOrderDto
+            {
+                OrderId = o.Id,
+                TableName = o.Table != null ? o.Table.Name : "Mang về/Khách lẻ",
+                OrderTime = o.CreatedAt.HasValue ? o.CreatedAt.Value.ToString("HH:mm") : "--:--",
+
+                
+                Items = o.OrderDetails
+                    
+                    .Select(od => new KitchenItemDto
+                    {
+                        OrderDetailId = od.Id,
+                        ProductName = (od.ProductVariant != null && od.ProductVariant.Product != null)
+                            ? $"{od.ProductVariant.Product.Name} ({od.ProductVariant.SizeName ?? "M"})"
+                            : "Món không xác định",
+                        Quantity = od.Quantity ?? 0,
+                        Status = od.Status, 
+                        Note = od.VoiceNote,
+                        Toppings = od.OrderDetailToppings
+                            .Where(odt => odt.Topping != null)
+                            .Select(odt => odt.Topping.Name)
+                            .ToList()
+                    }).ToList()
+            })
+            .ToListAsync();
+
+        return Ok(orders);
+    }
+
+
+
+
 }
 
