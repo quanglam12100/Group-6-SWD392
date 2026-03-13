@@ -1,4 +1,6 @@
-﻿using SmartRestaurant.Domain.Entities;
+﻿
+using SmartRestaurant.Application.DTOs;
+using SmartRestaurant.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +11,6 @@ namespace SmartRestaurant.Application.Interfaces
 {
     public interface IProductMatchingService
     {
-        Task<ProductVariant?> FindProductByVoiceTextAsync(string voiceText);
+        Task<List<VoiceOrderItemDto>> ParseOrderFromVoiceAsync(string voiceText);
     }
 }

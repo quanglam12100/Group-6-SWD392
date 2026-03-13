@@ -17,29 +17,23 @@ namespace SmartRestaurant.Controllers
             _audioService = audioService;
         }
 
-
         [HttpPost("match-product")]
         public async Task<IActionResult> MatchProduct([FromBody] VoiceCommandDto request)
         {
             try
             {
-                // Gọi thuật toán tìm kiếm
-                var result = await _productMatchingService.FindProductByVoiceTextAsync(request.Text);
+                // Gọi hàm mới (trả về List)
+                var results = await _productMatchingService.ParseOrderFromVoiceAsync(request.Text);
 
-                if (result == null)
+                if (results == null || !results.Any())
                 {
                     return NotFound(new { Message = "Không tìm thấy món nào khớp với yêu cầu." });
                 }
 
-                // Trả về kết quả món tìm được
                 return Ok(new
                 {
-                    Message = "Đã tìm thấy món!",
-                    ProductVariantId = result.Id,
-                    ProductName = result.Product?.Name, // Cần Include Product trong Repo mới hiện tên
-                    Size = result.SizeName,
-                    Price = result.Price ?? 0,
-                    MatchScore = "High" // (Bạn có thể return score từ service nếu muốn)
+                    Message = "Đã phân tích xong order!",
+                    Items = results 
                 });
             }
             catch (Exception ex)
@@ -47,9 +41,6 @@ namespace SmartRestaurant.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
-
-
-
 
         [HttpPost("upload-audio")]
         public async Task<IActionResult> UploadAudio(IFormFile file)
@@ -59,28 +50,19 @@ namespace SmartRestaurant.Controllers
 
             try
             {
-                // 1. Chuyển file upload thành Stream
                 using var stream = file.OpenReadStream();
-
-                // 2. Gọi AI convert Audio -> Text (Integration)
-                // (Bạn cần Inject IAudioService vào Controller trước)
                 var textResult = await _audioService.TranscribeAudioAsync(stream, file.FileName);
 
-                // 3. Gọi thuật toán tìm món (Algorithm - Đã làm)
-                var productMatch = await _productMatchingService.FindProductByVoiceTextAsync(textResult);
+                // Gọi hàm mới 
+                var orderItems = await _productMatchingService.ParseOrderFromVoiceAsync(textResult);
 
-                if (productMatch == null)
-                    return NotFound(new { VoiceText = textResult, Message = "Không tìm thấy món." });
+                if (orderItems == null || !orderItems.Any())
+                    return NotFound(new { VoiceText = textResult, Message = "Không nhận diện được món nào trong câu." });
 
                 return Ok(new
                 {
                     VoiceText = textResult,
-                    Product = new
-                    {
-                        productMatch.Id,
-                        productMatch.Product?.Name,
-                        productMatch.Price
-                    }
+                    Items = orderItems 
                 });
             }
             catch (Exception ex)

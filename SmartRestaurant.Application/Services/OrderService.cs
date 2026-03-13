@@ -8,6 +8,7 @@ namespace SmartRestaurant.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
 
+
         public OrderService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
@@ -322,16 +323,18 @@ namespace SmartRestaurant.Application.Services
                     CustomerName = o.CustomerName,
                     CustomerPhone = o.CustomerPhone,
                     DeliveryStatus = o.DeliveryStatus,
-                    TotalAmount = CalculateTotal(o),
+
+                    // FIX 1: Lấy thẳng TotalAmount từ DB ra (giống hệt GetAllTablesAsync)
+                    TotalAmount = o.TotalAmount ?? 0,
+
                     PaymentStatus = o.PaymentStatus,
                     CreatedAt = o.CreatedAt,
                     TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0),
 
                     Items = o.OrderDetails
-                        .Where(d => d.Status != "cancelled") 
+                        .Where(d => d.Status != "cancelled")
                         .Select(d => new OrderItemDto
                         {
-                           
                             ProductName = d.ProductVariant?.Product?.Name != null
                                 ? (string.IsNullOrEmpty(d.ProductVariant.SizeName)
                                     ? d.ProductVariant.Product.Name
@@ -340,8 +343,8 @@ namespace SmartRestaurant.Application.Services
 
                             Quantity = d.Quantity ?? 0,
 
-                           
-                            Price = d.ProductVariant?.Price ?? 0
+                            // FIX 2: Cộng thêm tiền Topping vào giá của từng món hiển thị trên bill
+                            Price = (d.ProductVariant?.Price ?? 0) + d.OrderDetailToppings.Sum(t => t.PriceAtPurchase ?? 0)
                         }).ToList()
                 };
             }).ToList();
@@ -394,6 +397,85 @@ namespace SmartRestaurant.Application.Services
                     TotalItems = o.OrderDetails.Where(d => d.Status != "cancelled").Sum(d => d.Quantity ?? 0)
                 };
             }).ToList();
+        }
+
+        public async Task<OrderDetailResponseDto> AddItemsToOrderAsync(int orderId, AddOrderItemsDto request)
+        {
+            
+            var order = await _unitOfWork.Orders.GetByIdAsync(orderId);
+            if (order == null)
+                throw new KeyNotFoundException($"Không tìm thấy đơn hàng với ID = {orderId}");
+
+            if (order.PaymentStatus.ToLower() == "paid" || order.ClosedAt != null)
+                throw new InvalidOperationException("Không thể thêm món vào đơn hàng đã thanh toán hoặc đã đóng.");
+
+            var variantIds = request.Items.Select(x => x.ProductVariantId).Distinct().ToList();
+            var variants = await _unitOfWork.ProductVariants.GetByIdsAsync(variantIds);
+
+            var toppingIds = request.Items.SelectMany(x => x.ToppingIds).Distinct().ToList();
+            var toppings = toppingIds.Any()
+                ? await _unitOfWork.Toppings.GetByIdsAsync(toppingIds)
+                : new List<Topping>();
+
+            decimal additionalTotalAmount = 0;
+
+            if (order.OrderDetails == null)
+                order.OrderDetails = new List<OrderDetail>();
+
+      
+            foreach (var itemDto in request.Items)
+            {
+                var variantEntity = variants.FirstOrDefault(v => v.Id == itemDto.ProductVariantId);
+                if (variantEntity == null)
+                    throw new KeyNotFoundException($"Sản phẩm ID {itemDto.ProductVariantId} không tồn tại");
+
+                var newOrderDetail = new OrderDetail
+                {
+                    ProductVariantId = itemDto.ProductVariantId,
+                    Quantity = itemDto.Quantity,
+                    VoiceNote = itemDto.VoiceNote,
+                    OriginalVoiceText = itemDto.OriginalVoiceText,
+                    Status = "pending", // Trạng thái đồng nhất với hàm Create
+                    OrderedAt = DateTime.Now,
+                    OrderDetailToppings = new List<OrderDetailTopping>()
+                };
+
+                decimal variantPrice = variantEntity.Price ?? 0;
+                decimal toppingsPrice = 0;
+
+           
+                if (itemDto.ToppingIds != null && itemDto.ToppingIds.Any())
+                {
+                    foreach (var toppingId in itemDto.ToppingIds)
+                    {
+                        var toppingEntity = toppings.FirstOrDefault(t => t.Id == toppingId);
+                        if (toppingEntity != null) 
+                        {
+                            toppingsPrice += toppingEntity.Price ?? 0;
+
+                            newOrderDetail.OrderDetailToppings.Add(new OrderDetailTopping
+                            {
+                                ToppingId = toppingId,
+                                PriceAtPurchase = toppingEntity.Price
+                            });
+                        }
+                    }
+                }
+
+             
+                decimal itemTotal = (variantPrice + toppingsPrice) * itemDto.Quantity;
+                additionalTotalAmount += itemTotal;
+
+              
+                order.OrderDetails.Add(newOrderDetail);
+            }
+
+            order.TotalAmount = (order.TotalAmount ?? 0) + additionalTotalAmount;
+
+            await _unitOfWork.Orders.UpdateAsync(order);
+            await _unitOfWork.CommitAsync();
+
+            return await GetOrderByIdAsync(orderId);
         }
     }
 }

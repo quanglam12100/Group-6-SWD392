@@ -108,5 +108,33 @@ namespace SmartRestaurant.Controllers
             var orders = await _orderService.GetOrdersByStaffIdAsync(staffId);
             return Ok(orders);
         }
+
+
+
+        [HttpPost("{id}/items")]
+        public async Task<IActionResult> AddItemsToOrder(int id, [FromBody] AddOrderItemsDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var result = await _orderService.AddItemsToOrderAsync(id, request);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Catch error when order is already paid
+                return BadRequest(new { Error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

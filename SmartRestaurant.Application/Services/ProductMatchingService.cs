@@ -1,13 +1,10 @@
 ﻿using SmartRestaurant.Application.Common;
+using SmartRestaurant.Application.DTOs;
 using SmartRestaurant.Application.Interfaces;
 using SmartRestaurant.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
-namespace SmartRestaurant.Application.Services
+namespace SmartRestaurant.Infrastructure.Services
 {
     public class ProductMatchingService : IProductMatchingService
     {
@@ -18,23 +15,60 @@ namespace SmartRestaurant.Application.Services
             _productVariantRepository = productVariantRepository;
         }
 
-        public async Task<ProductVariant?> FindProductByVoiceTextAsync(string voiceText)
+        public async Task<List<VoiceOrderItemDto>> ParseOrderFromVoiceAsync(string voiceText)
         {
-            if (string.IsNullOrEmpty(voiceText)) return null;
+            var results = new List<VoiceOrderItemDto>();
+            if (string.IsNullOrEmpty(voiceText)) return results;
 
-            var normalizedVoice = StringUtils.RemoveDiacritics(voiceText);
+            var parts = voiceText.ToLower().Split(new[] { " và ", ",", " với ", " thêm " }, StringSplitOptions.RemoveEmptyEntries);
 
-            // GỌI REPOSITORY ĐỂ LẤY DATA
             var allVariants = await _productVariantRepository.GetAllWithKeywordsAsync();
 
+            foreach (var part in parts)
+            {
+                int quantity = 1; 
+                string rawText = part.Trim();
+
+                var quantityMatch = Regex.Match(rawText, @"(\d+)\s*(ly|cốc|phần|bát)?");
+                if (quantityMatch.Success && int.TryParse(quantityMatch.Groups[1].Value, out int qty))
+                {
+                    quantity = qty;
+                }
+                else if (rawText.Contains("một ")) quantity = 1;
+                else if (rawText.Contains("hai ")) quantity = 2;
+                else if (rawText.Contains("ba ")) quantity = 3;
+
+                var textToMatch = Regex.Replace(rawText, @"(\d+)\s*(ly|cốc|phần|bát)?", "").Trim();
+                textToMatch = textToMatch.Replace("một", "").Replace("hai", "").Replace("ba", "").Trim();
+
+                var bestVariant = FindBestMatchVariant(textToMatch, allVariants);
+
+                if (bestVariant != null)
+                {
+                    results.Add(new VoiceOrderItemDto
+                    {
+                        Quantity = quantity,
+                        OriginalMatchText = rawText,
+                        ProductVariantId = bestVariant.Id,
+                        ProductName = bestVariant.Product?.Name,
+                        SizeName = bestVariant.SizeName,
+                        Price = bestVariant.Price ?? 0
+                    });
+                }
+            }
+
+            return results;
+        }
+
+        private ProductVariant? FindBestMatchVariant(string normalizedVoice, IEnumerable<ProductVariant> allVariants)
+        {
+            normalizedVoice = StringUtils.RemoveDiacritics(normalizedVoice);
             ProductVariant? bestMatch = null;
             int maxScore = 0;
 
-            // ... Phần logic chấm điểm ở dưới giữ nguyên y hệt ...
             foreach (var variant in allVariants)
             {
                 int currentScore = 0;
-                // Lưu ý: Có thể cần check null cho Product
                 if (variant.Product == null) continue;
 
                 string prodName = StringUtils.RemoveDiacritics(variant.Product.Name ?? "");
