@@ -20,5 +20,8 @@ namespace SmartRestaurant.Application.Interfaces
         Task<List<OrderSummaryDto>> GetPaidOrdersAsync();
         Task<List<OrderSummaryDto>> GetOrdersByStaffIdAsync(int staffId);
         Task<OrderDetailResponseDto> AddItemsToOrderAsync(int orderId, AddOrderItemsDto request);
+        Task<bool> RemoveOrderItemAsync(int orderId, int orderDetailId);
+
+
     }
 }

@@ -9,6 +9,7 @@ namespace SmartRestaurant.Application.Services
         private readonly IUnitOfWork _unitOfWork;
 
 
+
         public OrderService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
@@ -35,6 +36,8 @@ namespace SmartRestaurant.Application.Services
 
             return await BuildOrderAndSave(order, request.Items);
         }
+
+
 
         
         public async Task<CreateOrderResponseDto> CreateOnlineOrderAsync(CreateOnlineOrderDto request)
@@ -71,6 +74,9 @@ namespace SmartRestaurant.Application.Services
 
             return await BuildOrderAndSave(order, request.Items);
         }
+
+
+
 
       
         public async Task<OrderDetailResponseDto> GetOrderByIdAsync(int id)
@@ -477,5 +483,38 @@ namespace SmartRestaurant.Application.Services
 
             return await GetOrderByIdAsync(orderId);
         }
+
+
+        public async Task<bool> RemoveOrderItemAsync(int orderId, int orderDetailId)
+        {
+            // 1. Lấy đơn hàng thông qua UnitOfWork
+            var order = await _unitOfWork.Orders.GetByIdAsync(orderId);
+
+            if (order == null)
+                throw new Exception("Không tìm thấy đơn hàng");
+
+            if (order.PaymentStatus != "unpaid")
+                throw new Exception("Đơn hàng đã thanh toán, không thể thay đổi");
+
+         
+            var itemToRemove = order.OrderDetails.FirstOrDefault(d => d.Id == orderDetailId);
+
+            if (itemToRemove == null)
+                throw new Exception("Không tìm thấy món trong đơn hàng này");
+
+            _unitOfWork.Orders.Remove(itemToRemove);
+
+            order.OrderDetails.Remove(itemToRemove);
+
+            order.TotalAmount = CalculateTotal(order);
+
+            await _unitOfWork.Orders.UpdateAsync(order);
+
+            await _unitOfWork.CommitAsync();
+
+            return true;
+        }
+
+
     }
 }

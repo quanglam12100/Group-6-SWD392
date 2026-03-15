@@ -64,6 +64,11 @@ namespace SmartRestaurant.Infrastructure.Repository
          .FirstOrDefaultAsync(o => o.Id == id);
         }
 
+        public void Remove(OrderDetail orderDetail)
+        {
+            _context.Set<OrderDetail>().Remove(orderDetail);
+        }
+
         public   Task UpdateAsync(Order order)
         {
             _context.Orders.Update(order);

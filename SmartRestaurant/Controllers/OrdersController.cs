@@ -37,6 +37,35 @@ namespace SmartRestaurant.Controllers
             }
         }
 
+        [HttpDelete("{orderId}/items/{orderDetailId}")]
+        public async Task<IActionResult> RemoveOrderItem(int orderId, int orderDetailId)
+        {
+            try
+            {
+                var isSuccess = await _orderService.RemoveOrderItemAsync(orderId, orderDetailId);
+
+                if (isSuccess)
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Xóa món khỏi đơn hàng thành công"
+                    });
+                }
+
+                return BadRequest(new { success = false, message = "Không thể xóa món ăn này." });
+            }
+            catch (Exception ex)
+            {
+               
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        }
+
 
         [HttpPost("online")]
         public async Task<IActionResult> CreateOnlineOrder([FromBody] CreateOnlineOrderDto request)

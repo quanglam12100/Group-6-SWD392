@@ -111,6 +111,7 @@ namespace SmartRestaurant
             builder.Services.AddScoped<IProductMatchingService, ProductMatchingService>();
             //builder.Services.AddScoped<ITableRepository, TableRepository>();
             builder.Services.AddScoped<ITableService, TableService>();
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
             var app = builder.Build();
 
