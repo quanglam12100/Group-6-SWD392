@@ -1,4 +1,4 @@
-﻿using SmartRestaurant.Application.Interfaces;
+using SmartRestaurant.Application.Interfaces;
 using SmartRestaurant.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
@@ -16,6 +16,7 @@ namespace SmartRestaurant.Infrastructure.Repository
         public IProductVariantRepository ProductVariants { get; private set; }
         public IToppingRepository Toppings { get; private set; }
         public ITableRepository Tables { get; private set; }
+        public IAccountRepository Accounts { get; private set; }
 
 
 
@@ -27,6 +28,7 @@ namespace SmartRestaurant.Infrastructure.Repository
             ProductVariants = new ProductVariantRepository(_context);
             Toppings = new ToppingRepository(_context);
             Tables = new TableRepository(_context);
+            Accounts = new AccountRepository(_context);
         }
 
         public async Task<int> CommitAsync()

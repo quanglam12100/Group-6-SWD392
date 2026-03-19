@@ -1,4 +1,4 @@
-﻿using SmartRestaurant.Domain.Entities;
+using SmartRestaurant.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +17,7 @@ namespace SmartRestaurant.Application.Interfaces
         Task<int> CommitAsync();
 
         ITableRepository Tables { get; }
+        IAccountRepository Accounts { get; }
 
     }
 }
