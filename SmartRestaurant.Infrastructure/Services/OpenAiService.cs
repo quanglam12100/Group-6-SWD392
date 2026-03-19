@@ -1,39 +1,44 @@
 ﻿using SmartRestaurant.Application.Interfaces;
+using Microsoft.Extensions.Configuration; // Thêm thư viện này để đọc appsettings.json
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
+using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SmartRestaurant.Infrastructure.Services
 {
-    public class OpenAiService :IAudioService
+
+    public class OpenAiService : IAudioService
     {
-        
-        private readonly string _apiKey = "";
+        private readonly string _apiKey;
         private readonly HttpClient _httpClient;
-        public OpenAiService()
+
+
+        public OpenAiService(IConfiguration configuration)
         {
+
+            _apiKey = configuration["Groq:ApiKey"] ?? throw new Exception("Thiếu API Key của Groq!");
+
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
         }
+
         public async Task<string> TranscribeAudioAsync(Stream audioStream, string fileName)
         {
-
             if (audioStream == null || audioStream.Length == 0)
                 throw new ArgumentException("Audio stream is empty");
 
-            // URL API của OpenAI dành cho Audio -> Text
-            var apiUrl = "https://api.openai.com/v1/audio/transcriptions";
+            var apiUrl = "https://api.groq.com/openai/v1/audio/transcriptions";
 
             using var requestContent = new MultipartFormDataContent();
             var fileContent = new StreamContent(audioStream);
             fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
             requestContent.Add(fileContent, "file", fileName);
 
-            requestContent.Add(new StringContent("whisper-1"), "model");
+
+            requestContent.Add(new StringContent("whisper-large-v3"), "model");
 
             try
             {
@@ -42,7 +47,7 @@ namespace SmartRestaurant.Infrastructure.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    throw new Exception($"OpenAI API Error: {responseString}");
+                    throw new Exception($"Groq API Error: {responseString}");
                 }
 
                 using var jsonDoc = JsonDocument.Parse(responseString);
@@ -55,9 +60,8 @@ namespace SmartRestaurant.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                throw new Exception("Lỗi khi gọi OpenAI: " + ex.Message);
+                throw new Exception("Lỗi khi gọi Groq API: " + ex.Message);
             }
         }
-
     }
 }

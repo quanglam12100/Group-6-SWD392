@@ -26,7 +26,7 @@ namespace SmartRestaurant.Infrastructure.Services
 
             foreach (var part in parts)
             {
-                int quantity = 1; 
+                int quantity = 1;
                 string rawText = part.Trim();
 
                 var quantityMatch = Regex.Match(rawText, @"(\d+)\s*(ly|cốc|phần|bát)?");
@@ -37,6 +37,8 @@ namespace SmartRestaurant.Infrastructure.Services
                 else if (rawText.Contains("một ")) quantity = 1;
                 else if (rawText.Contains("hai ")) quantity = 2;
                 else if (rawText.Contains("ba ")) quantity = 3;
+                else if (rawText.Contains("bốn ")) quantity = 4;
+                else if (rawText.Contains("năm ")) quantity = 5;
 
                 var textToMatch = Regex.Replace(rawText, @"(\d+)\s*(ly|cốc|phần|bát)?", "").Trim();
                 textToMatch = textToMatch.Replace("một", "").Replace("hai", "").Replace("ba", "").Trim();
@@ -60,9 +62,12 @@ namespace SmartRestaurant.Infrastructure.Services
             return results;
         }
 
+
         private ProductVariant? FindBestMatchVariant(string normalizedVoice, IEnumerable<ProductVariant> allVariants)
         {
-            normalizedVoice = StringUtils.RemoveDiacritics(normalizedVoice);
+            normalizedVoice = StringUtils.RemoveDiacritics(normalizedVoice).ToLower();
+            var voiceWords = normalizedVoice.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
             ProductVariant? bestMatch = null;
             int maxScore = 0;
 
@@ -71,26 +76,38 @@ namespace SmartRestaurant.Infrastructure.Services
                 int currentScore = 0;
                 if (variant.Product == null) continue;
 
-                string prodName = StringUtils.RemoveDiacritics(variant.Product.Name ?? "");
-                string sizeName = StringUtils.RemoveDiacritics(variant.SizeName ?? "");
 
-                if (normalizedVoice.Contains(prodName)) currentScore += 10;
+                string prodName = StringUtils.RemoveDiacritics(variant.Product.Name ?? "").ToLower();
+                var prodWords = prodName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-                if (!string.IsNullOrEmpty(sizeName) && normalizedVoice.Contains(sizeName))
-                    currentScore += 5;
+                foreach (var word in prodWords)
+                {
+                    if (voiceWords.Contains(word))
+                    {
+                        currentScore += 10;
+                    }
+                }
+
+                string sizeName = StringUtils.RemoveDiacritics(variant.SizeName ?? "").ToLower();
+                if (!string.IsNullOrEmpty(sizeName) && voiceWords.Contains(sizeName))
+                {
+                    currentScore += 15;
+                }
 
                 if (variant.Product.ProductKeywords != null)
                 {
                     foreach (var kw in variant.Product.ProductKeywords)
                     {
-                        var normalizedKw = StringUtils.RemoveDiacritics(kw.Keyword ?? "");
+                        var normalizedKw = StringUtils.RemoveDiacritics(kw.Keyword ?? "").ToLower();
+
                         if (normalizedVoice.Contains(normalizedKw))
                         {
-                            currentScore += 8;
+                            currentScore += 20;
                             break;
                         }
                     }
                 }
+
 
                 if (currentScore > maxScore)
                 {
@@ -99,7 +116,10 @@ namespace SmartRestaurant.Infrastructure.Services
                 }
             }
 
-            return maxScore > 0 ? bestMatch : null;
+
+            return maxScore >= 10 ? bestMatch : null;
         }
+
+
     }
 }
