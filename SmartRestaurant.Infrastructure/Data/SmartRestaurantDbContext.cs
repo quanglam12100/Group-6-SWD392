@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using SmartRestaurant.Domain.Entities;
@@ -125,6 +125,9 @@ public partial class SmartRestaurantDbContext : DbContext
                 .HasDefaultValue(0m)
                 .HasColumnType("decimal(18, 2)")
                 .HasColumnName("total_amount");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.OrderCustomers)
                 .HasForeignKey(d => d.CustomerId)
@@ -168,6 +171,9 @@ public partial class SmartRestaurantDbContext : DbContext
                 .HasMaxLength(255)
                 .HasDefaultValue("pending")
                 .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
             entity.Property(e => e.VoiceNote).HasColumnName("voice_note");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderDetails)
@@ -276,6 +282,8 @@ public partial class SmartRestaurantDbContext : DbContext
                 .HasMaxLength(255)
                 .HasDefaultValue("available")
                 .HasColumnName("status");
+
+            entity.HasOne(d => d.CurrentStaff).WithMany(p => p.Tables).HasForeignKey(d => d.CurrentStaffId);
         });
 
         modelBuilder.Entity<Topping>(entity =>

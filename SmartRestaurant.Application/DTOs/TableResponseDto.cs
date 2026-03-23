@@ -14,5 +14,9 @@ namespace SmartRestaurant.Application.DTOs
         // available | occupied | reserved
         public OrderSummaryDto? CurrentOrder { get; set; }
 
+
+        public int? CurrentStaffId { get; set; }
+        public string? CurrentStaffName { get; set; }
+
     }
 }

@@ -22,6 +22,7 @@ namespace SmartRestaurant.Infrastructure.Repository
         public async Task<List<Table>> GetAllAsync()
         {
             return await _context.Tables
+                .Include(t => t.CurrentStaff)
                 .OrderBy(t => t.Name)
                 .ToListAsync();
         }

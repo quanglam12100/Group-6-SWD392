@@ -21,6 +21,28 @@ namespace SmartRestaurant.Application.Services
             if (request.Items == null || !request.Items.Any())
                 throw new ArgumentException("Đơn hàng phải có ít nhất 1 món");
 
+            
+
+            if (request.TableId > 0)
+            {
+                var table = await _unitOfWork.Tables.GetByIdAsync(request.TableId.Value);
+
+                if (table == null)
+                    throw new ArgumentException("Bàn không tồn tại trên hệ thống!");
+
+                if (table.CurrentStaffId != request.StaffId)
+                {
+                    throw new ArgumentException("Lỗi thao tác: Bạn không được phân công phục vụ bàn này nên không thể tạo đơn!");
+                }
+                bool isTableOccupied = await _unitOfWork.Orders.HasUnpaidOrderAsync(request.TableId);
+                if (isTableOccupied)
+                    throw new ArgumentException($"Bàn này đang có khách và chưa thanh toán. Không thể tạo order mới!");
+            }
+
+
+
+
+
             var order = new Order
             {
                 TableId = request.TableId,
@@ -325,6 +347,7 @@ namespace SmartRestaurant.Application.Services
                     OrderCode = o.OrderCode ?? "",
                     OrderType = o.OrderType ?? "dine_in",
                     TableName = o.Table?.Name,
+                    StaffId = o.Staff?.Id,
                     StaffName = o.Staff?.Fullname,
                     CustomerName = o.CustomerName,
                     CustomerPhone = o.CustomerPhone,

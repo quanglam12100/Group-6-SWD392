@@ -27,13 +27,15 @@ public partial class Order
 
     public string OrderType { get; set; } = null!;
 
-    public string? CustomerName { get; set; }   
+    public string? CustomerName { get; set; }
 
     public string? CustomerPhone { get; set; }
 
     public string? DeliveryAddress { get; set; }
 
     public string? DeliveryStatus { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
 
     public virtual Account? Customer { get; set; }
 
@@ -42,5 +44,4 @@ public partial class Order
     public virtual Account? Staff { get; set; }
 
     public virtual Table? Table { get; set; }
-
 }

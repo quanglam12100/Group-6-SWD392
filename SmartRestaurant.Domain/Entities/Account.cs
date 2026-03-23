@@ -23,5 +23,7 @@ public partial class Account
 
     public virtual ICollection<Order> OrderStaffs { get; set; } = new List<Order>();
 
+    public virtual ICollection<Table> Tables { get; set; } = new List<Table>();
+
     public virtual ICollection<VoiceLog> VoiceLogs { get; set; } = new List<VoiceLog>();
 }

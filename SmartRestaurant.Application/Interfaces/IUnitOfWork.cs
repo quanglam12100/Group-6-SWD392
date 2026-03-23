@@ -13,7 +13,9 @@ namespace SmartRestaurant.Application.Interfaces
         IProductVariantRepository ProductVariants { get; }
         IToppingRepository Toppings { get; }
 
-     
+        IAccountRepository Accounts { get; }
+
+
         Task<int> CommitAsync();
 
         ITableRepository Tables { get; }

@@ -11,5 +11,9 @@ public partial class Table
 
     public string Status { get; set; } = null!;
 
+    public int? CurrentStaffId { get; set; }
+
+    public virtual Account? CurrentStaff { get; set; }
+
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 }

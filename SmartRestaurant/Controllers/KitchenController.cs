@@ -190,13 +190,12 @@ public class KitchenController : ControllerBase
     [HttpGet("orders")]
     public async Task<IActionResult> GetKitchenOrders()
     {
-        
         var activeStatuses = new[] { "pending", "cooking", "ready" };
 
         var orders = await _context.Orders
             .Include(o => o.Table)
             .Include(o => o.OrderDetails)
-                .ThenInclude(od => od.ProductVariant) 
+                .ThenInclude(od => od.ProductVariant)
                     .ThenInclude(pv => pv.Product)    // Cần check lại tên biến Product trong ProductVariant
             .Include(o => o.OrderDetails)
                 .ThenInclude(od => od.OrderDetailToppings)
@@ -207,7 +206,10 @@ public class KitchenController : ControllerBase
             .Select(o => new KitchenOrderDto
             {
                 OrderId = o.Id,
-             
+
+                // THÊM DÒNG NÀY ĐỂ TRẢ VỀ STAFF ID CHO FRONTEND:
+                StaffId = o.StaffId,
+
                 TableName = o.Table != null ? o.Table.Name : "Mang về/Khách lẻ",
                 OrderTime = o.CreatedAt.HasValue ? o.CreatedAt.Value.ToString("HH:mm") : "--:--",
 

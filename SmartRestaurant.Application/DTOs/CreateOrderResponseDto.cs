@@ -9,6 +9,7 @@ namespace SmartRestaurant.Application.DTOs
     public class CreateOrderResponseDto
     {
         public int OrderId { get; set; }
+        public int? StaffId { get; set; }
         public string OrderCode { get; set; } = "";
         public string OrderType { get; set; } = "dine_in";
         public string? TableName { get; set; }

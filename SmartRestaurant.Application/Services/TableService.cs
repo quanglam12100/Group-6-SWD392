@@ -41,7 +41,8 @@ namespace SmartRestaurant.Application.Services
                     Id = t.Id,
                     Name = t.Name ?? "",
                     Status = currentOrder != null ? "occupied" : t.Status,
-
+                    CurrentStaffId = t.CurrentStaffId,
+                    CurrentStaffName = t.CurrentStaff?.Fullname ?? t.CurrentStaff?.Username,
                     CurrentOrder = currentOrder == null ? null : new OrderSummaryDto
                     {
                         OrderId = currentOrder.Id,
@@ -90,6 +91,49 @@ namespace SmartRestaurant.Application.Services
             table.Status = status;
 
             await _unitOfWork.Tables.UpdateAsync(table);
+            await _unitOfWork.CommitAsync();
+        }
+
+
+        public async Task AssignTablesToStaffAsync(AssignTablesRequestDto request)
+        {
+            if (request == null || request.TableIds == null || !request.TableIds.Any())
+                throw new ArgumentException("Dữ liệu không hợp lệ hoặc danh sách bàn trống.");
+
+            var staff = await _unitOfWork.Accounts.GetByIdAsync(request.StaffId);
+            if (staff == null)
+                throw new KeyNotFoundException("Không tìm thấy tài khoản nhân viên này trong hệ thống.");
+
+            var allTables = await _unitOfWork.Tables.GetAllAsync();
+
+            var tablesToAssign = allTables.Where(t => request.TableIds.Contains(t.Id)).ToList();
+
+            if (!tablesToAssign.Any())
+                throw new KeyNotFoundException("Không tìm thấy các bàn được yêu cầu.");
+
+            foreach (var table in tablesToAssign)
+            {
+                table.CurrentStaffId = request.StaffId;
+                await _unitOfWork.Tables.UpdateAsync(table);
+            }
+
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async Task ClearTablesAsync(List<int> tableIds)
+        {
+            if (tableIds == null || !tableIds.Any())
+                throw new ArgumentException("Danh sách bàn trống.");
+
+            var allTables = await _unitOfWork.Tables.GetAllAsync();
+            var tablesToClear = allTables.Where(t => tableIds.Contains(t.Id)).ToList();
+
+            foreach (var table in tablesToClear)
+            {
+                table.CurrentStaffId = null; 
+                await _unitOfWork.Tables.UpdateAsync(table);
+            }
+
             await _unitOfWork.CommitAsync();
         }
     }

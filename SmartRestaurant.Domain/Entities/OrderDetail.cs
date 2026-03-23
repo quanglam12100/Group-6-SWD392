@@ -29,10 +29,11 @@ public partial class OrderDetail
 
     public DateTime? ServedAt { get; set; }
 
+    public DateTime? UpdatedAt { get; set; }
+
     public virtual Order? Order { get; set; }
 
     public virtual ICollection<OrderDetailTopping> OrderDetailToppings { get; set; } = new List<OrderDetailTopping>();
 
     public virtual ProductVariant? ProductVariant { get; set; }
-   
 }

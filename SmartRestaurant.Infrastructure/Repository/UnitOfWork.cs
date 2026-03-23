@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SmartRestaurant.Infrastructure.Repository
 {
-    public class UnitOfWork :IUnitOfWork
+    public class UnitOfWork : IUnitOfWork
     {
         private readonly SmartRestaurantDbContext _context;
 
@@ -17,7 +17,7 @@ namespace SmartRestaurant.Infrastructure.Repository
         public IToppingRepository Toppings { get; private set; }
         public ITableRepository Tables { get; private set; }
 
-
+        public IAccountRepository Accounts { get; private set; }
 
         public UnitOfWork(SmartRestaurantDbContext context)
         {
@@ -27,6 +27,7 @@ namespace SmartRestaurant.Infrastructure.Repository
             ProductVariants = new ProductVariantRepository(_context);
             Toppings = new ToppingRepository(_context);
             Tables = new TableRepository(_context);
+            Accounts = new AccountRepository(_context);
         }
 
         public async Task<int> CommitAsync()

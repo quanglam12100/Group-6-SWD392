@@ -23,6 +23,7 @@ namespace SmartRestaurant.Application.DTOs
         public string PaymentStatus { get; set; } = "";
         public DateTime? CreatedAt { get; set; }
         public int TotalItems { get; set; }
+        public int? StaffId { get; set; }
 
         public List<OrderItemDto>? Items { get; set; }
 

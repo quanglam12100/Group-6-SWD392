@@ -11,5 +11,8 @@ namespace SmartRestaurant.Application.Interfaces
     {
         Task<List<TableResponseDto>> GetAllTablesAsync();
         Task UpdateTableStatusAsync(int id, string status);
+
+        Task AssignTablesToStaffAsync(AssignTablesRequestDto request);
+        Task ClearTablesAsync(List<int> tableIds);
     }
 }

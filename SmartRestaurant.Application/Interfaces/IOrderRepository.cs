@@ -1,4 +1,5 @@
-﻿using SmartRestaurant.Domain.Entities;
+﻿using SmartRestaurant.Application.DTOs;
+using SmartRestaurant.Domain.Entities;
 
 namespace SmartRestaurant.Application.Interfaces
 {
@@ -11,5 +12,8 @@ namespace SmartRestaurant.Application.Interfaces
         Task<IEnumerable<Order>> GetAllOrdersWithDetailsAsync();
 
         void Remove(OrderDetail orderDetail);
+
+        Task<bool> HasUnpaidOrderAsync(int? tableId);
+        Task<KitchenStatsDto> GetKitchenStatsAsync(DateTime? filterDate = null);
     }
 }
