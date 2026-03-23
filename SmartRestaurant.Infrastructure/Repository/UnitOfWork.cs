@@ -1,4 +1,4 @@
-﻿using SmartRestaurant.Application.Interfaces;
+using SmartRestaurant.Application.Interfaces;
 using SmartRestaurant.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
@@ -16,6 +16,7 @@ namespace SmartRestaurant.Infrastructure.Repository
         public IProductVariantRepository ProductVariants { get; private set; }
         public IToppingRepository Toppings { get; private set; }
         public ITableRepository Tables { get; private set; }
+        public IAccountRepository Accounts { get; private set; }
 
         public IAccountRepository Accounts { get; private set; }
 

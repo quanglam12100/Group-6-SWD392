@@ -1,6 +1,43 @@
 @SmartRestaurant_HostAddress = https://localhost:7031
 
-GET {{SmartRestaurant_HostAddress}}/weatherforecast/
+### GET All Staff
+GET {{SmartRestaurant_HostAddress}}/api/admin/staff
 Accept: application/json
 
-###
+### CREATE New Staff
+POST {{SmartRestaurant_HostAddress}}/api/admin/staff
+Content-Type: application/json
+
+{
+    "username": "test_staff_1",
+    "password": "password123",
+    "fullname": "Nguyễn Văn A"
+}
+
+### UPDATE Staff (id=1)
+PUT {{SmartRestaurant_HostAddress}}/api/admin/staff/1
+Content-Type: application/json
+
+{
+    "fullname": "Nguyễn Văn A - Updated",
+    "isActive": true
+}
+
+### DELETE Staff (id=1)
+DELETE {{SmartRestaurant_HostAddress}}/api/admin/staff/1
+
+### ----------------------------------------------------------------
+
+### GET All Kitchen Staff
+GET {{SmartRestaurant_HostAddress}}/api/admin/kitchen
+Accept: application/json
+
+### CREATE New Kitchen Staff
+POST {{SmartRestaurant_HostAddress}}/api/admin/kitchen
+Content-Type: application/json
+
+{
+    "username": "test_kitchen_1",
+    "password": "password123",
+    "fullname": "Trần Thị B"
+}

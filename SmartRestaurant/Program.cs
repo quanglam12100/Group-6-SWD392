@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SmartRestaurant.Application.Interfaces;
@@ -112,6 +112,7 @@ namespace SmartRestaurant
             //builder.Services.AddScoped<ITableRepository, TableRepository>();
             builder.Services.AddScoped<ITableService, TableService>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<IAccountService, AccountService>();
 
             var app = builder.Build();
 
